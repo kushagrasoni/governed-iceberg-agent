@@ -324,7 +324,7 @@ src/governed_agent/
   docai.py                  synthetic documents, extraction, confidence routing, reviewer queue
   pipeline.py               the governor that wires it all together
   default_policy.json       the policy (owned by risk, not by the agent)
-tests/                      39 pytest tests
+tests/                      40 pytest tests
 docs/architecture.md        architecture, production mapping (Polaris/Spark/Trino), limitations
 docs/architecture.mmd/.png  diagram source + render
 drafts/medium-article.md    article draft (not published)
@@ -334,13 +334,13 @@ drafts/medium-article.md    article draft (not published)
 
 ```bash
 pip install -e ".[dev]" && pytest
-# 39 passed in ~15 s
+# 40 passed in ~16 s
 ```
 
 They cover the guardrails (allowlist, irreversible ops, DDL/DML in SQL, PII rules, tier floor,
 blast radius, sandbox, expected effect, DQ regression), the approval gate (auto-approve scope,
 self-approval, roles, interactive prompt, EOF fail-closed, rejected plans leaving main untouched),
-the audit log (tamper and deletion detection, event sequence, snapshot linkage, Iceberg mirror),
+the audit log (tamper and deletion detection, event sequence, snapshot linkage, Iceberg mirror, forced re-init archiving rather than deleting evidence),
 provenance, tracing, rollback (snapshot restore, `ADD_COLUMN` and derived-table reversal, refusal
 when the table has moved, `--force`, stale base), Document AI routing end to end, the LLM planner
 against a fake endpoint (including a prompt-injected `DELETE`), and the real CLI with a piped
