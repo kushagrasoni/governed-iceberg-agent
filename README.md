@@ -17,6 +17,39 @@ Everything runs on a laptop: PyIceberg with a SQLite catalog on the local filesy
 sandboxed transforms, no cloud keys, no Docker. **All data is synthetic** (see
 [DATA_NOTICE.md](DATA_NOTICE.md)).
 
+## Try it in 5 minutes
+
+You need Python 3.10 or newer and git. Everything runs offline after the install: no cloud
+account, no API key, no Docker.
+
+1. Get the code:
+   ```bash
+   git clone https://github.com/kushagrasoni/governed-iceberg-agent.git
+   cd governed-iceberg-agent
+   ```
+2. Create and activate a virtual environment:
+   ```bash
+   python3 -m venv .venv
+   . .venv/bin/activate
+   ```
+3. Install the project (with the test tools):
+   ```bash
+   pip install ".[dev]"
+   ```
+4. Run the demo:
+   ```bash
+   gia demo
+   ```
+5. Optional, run the tests:
+   ```bash
+   pytest
+   ```
+
+In about 10 seconds the demo builds a small synthetic bank lakehouse, lets a rule-based agent
+propose fixes, and prints each plan as `EXECUTED`, `BLOCKED` or `REJECTED` with who approved it,
+followed by rollbacks and a summary of the audit log, traces and provenance records it wrote to
+`./.lakehouse/`.
+
 ![architecture](docs/architecture.png)
 
 ## Why "evidence trail" and not "SR 11-7 compliance"
