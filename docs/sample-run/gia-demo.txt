@@ -1,43 +1,43 @@
 
 === 1. Init local Iceberg lakehouse (SQLite catalog + local files, synthetic data) 
-  seeded bank.transactions: 5000 rows, snapshot 7862520874184501590
+  seeded bank.transactions: 5000 rows, snapshot 8746992293146341987
   seeded defects: {'noncanonical_currency': 197, 'null_merchant_category': 147, 'negative_purchase_amount': 49, 'future_dated': 24, 'duplicate_rows': 75}
   profile: {'row_count': 5000, 'null_txn_id': 0, 'duplicate_txn_id': 75, 'noncanonical_currency': 202, 'null_merchant_category': 150, 'negative_purchase_amount': 50, 'future_dated': 24}
 
 === 2. Safe, approved changes (Write-Audit-Publish on an Iceberg branch) 
-  [EXECUTED] p-1d82eccde8 FIX_DATA_QUALITY     tier=MEDIUM -> bank.transactions
+  [EXECUTED] p-d6454da7a8 FIX_DATA_QUALITY     tier=MEDIUM -> bank.transactions
              approved by reviewer.alex via demo-simulated
-             snapshot 7862520874184501590 -> 424384808983593339   trace=348e4fd974a1767a88eda12e220e47ac
+             snapshot 8746992293146341987 -> 1930162885099378059   trace=35a35934914eff3f5ddf99172e76f6fd
 
 === 3. LOW tier but regulated table -> --auto-approve-low-risk does NOT apply 
-  [EXECUTED] p-fe87153746 ADD_COLUMN           tier=LOW    -> bank.transactions
+  [EXECUTED] p-9ab00a9de9 ADD_COLUMN           tier=LOW    -> bank.transactions
              approved by reviewer.alex via demo-simulated
-             snapshot 424384808983593339 -> 736119098016682764   trace=c4b2316465ca301f8c71116c43c2ad8f
+             snapshot 1930162885099378059 -> 7902840283944095118   trace=aadeee80a58e71fcbe8a3be8b08855f3
 
 === 4. LOW tier, non-regulated analytics table -> auto-approved =======
-  [EXECUTED] p-31b6c55f82 CREATE_DERIVED_TABLE tier=LOW    -> analytics.daily_merchant_summary
+  [EXECUTED] p-db9b39744a CREATE_DERIVED_TABLE tier=LOW    -> analytics.daily_merchant_summary
              approved by auto-policy via auto-low-risk
-             snapshot None -> 8196674067259575387   trace=a57b8db9ac1e686cd9f06a2d61697afa
+             snapshot None -> 3567770824131279653   trace=5058de8525be39daa468eb55191c2465
 
 === 5. Deduplicate replayed transactions (MEDIUM) =====================
-  [EXECUTED] p-04123b8222 DEDUPLICATE          tier=MEDIUM -> bank.transactions
+  [EXECUTED] p-69569aa09b DEDUPLICATE          tier=MEDIUM -> bank.transactions
              approved by reviewer.alex via demo-simulated
-             snapshot 736119098016682764 -> 4458795021177196158   trace=12b8788ab49746778571f03062a98a3d
+             snapshot 7902840283944095118 -> 5133585525843165488   trace=f4f6bb9efb67b104446fd7566e472d10
 
 === 6. Guardrails: what a careless agent proposes =====================
-  [BLOCKED ] p-d6e429b721 CREATE_DERIVED_TABLE tier=LOW    -> analytics.marketing_contacts
+  [BLOCKED ] p-a776f0888c CREATE_DERIVED_TABLE tier=LOW    -> analytics.marketing_contacts
              raw PII columns referenced: ['customer_email', 'customer_name'] (allowed only inside ['sha256', 'md5'])
-  [BLOCKED ] p-5602e00827 DELETE_ROWS          tier=HIGH   -> bank.transactions
+  [BLOCKED ] p-b0845ffce0 DELETE_ROWS          tier=HIGH   -> bank.transactions
              32.45% of rows changed > hard limit 25.0%; 32.45% of rows removed > 5.0%
-  [BLOCKED ] p-a2543f4285 DROP_TABLE           tier=HIGH   -> bank.transactions
+  [BLOCKED ] p-2eac6b37f0 DROP_TABLE           tier=HIGH   -> bank.transactions
              DROP_TABLE is irreversible on this platform; agents may only take reversible actions
 
 === 7. HIGH tier delete: standard reviewer is refused, elevated approver required 
-  [REJECTED] p-6dece65dce DELETE_ROWS          tier=HIGH   -> bank.transactions
+  [REJECTED] p-60965de4a8 DELETE_ROWS          tier=HIGH   -> bank.transactions
              HIGH requires role 'elevated', approver has 'standard'
-  [EXECUTED] p-b9ef06c862 DELETE_ROWS          tier=HIGH   -> bank.transactions
+  [EXECUTED] p-2215880782 DELETE_ROWS          tier=HIGH   -> bank.transactions
              approved by mrm.officer.priya via demo-simulated
-             snapshot 4458795021177196158 -> 5606119185522335336   trace=46913c0f3bc38d65fa0617831e8c2525
+             snapshot 5133585525843165488 -> 393665402369891699   trace=e3830c3110a2c1e8b667d64fe424f628
 
 === 8. Document AI with per-field confidence routing ==================
   extracted 8 docs: ready=2 held=6 queued_fields=6
@@ -47,9 +47,9 @@
     held loan_app_006.txt: ['annual_income']
     held loan_app_007.txt: ['loan_amount']
     held loan_app_008.txt: ['application_date']
-  [EXECUTED] p-373de18bb3 APPEND_RECORDS       tier=MEDIUM -> bank.loan_applications
+  [EXECUTED] p-4d8c4365de APPEND_RECORDS       tier=MEDIUM -> bank.loan_applications
              approved by reviewer.alex via demo-simulated
-             snapshot 4862308390681683255 -> 6665534159330609190   trace=c1f716cdb9b49a8a14341bae47b4d0c2
+             snapshot 3651590677270913634 -> 752532673956218148   trace=d78c9ef507b8ab6bd3872a8a2b49848a
   reviewer resolves the queue (simulated reviewer reads the synthetic answer key):
     3dc5a1c2:annual_income     annual_income     raw='$153,OOO'   conf=0.72 -> 153000.0
     f7f4e913:loan_amount       loan_amount       raw='$1?,500'    conf=0.20 -> 13500.0
@@ -57,21 +57,21 @@
     b627c51a:annual_income     annual_income     raw='$2O2,OOO'   conf=0.72 -> 202000.0
     1347e024:loan_amount       loan_amount       raw='$1?,000'    conf=0.20 -> 12000.0
     a8d404c3:application_date  application_date  raw='09/16/26'   conf=0.80 -> '2026-09-16'
-  [EXECUTED] p-c30e82ab25 APPEND_RECORDS       tier=MEDIUM -> bank.loan_applications
+  [EXECUTED] p-4509c2ac93 APPEND_RECORDS       tier=MEDIUM -> bank.loan_applications
              approved by reviewer.alex via demo-simulated
-             snapshot 6665534159330609190 -> 4489174258288859902   trace=53069af0d2c8cff51413dd61f36c6557
+             snapshot 752532673956218148 -> 8274209765539018920   trace=e799e9f6780f1edebe20385c420d4362
   bank.loan_applications rows: 8; reviewed rows: 6
 
 === 9. Reversibility ==================================================
-  rollback of p-04123b8222 refused: bank.transactions has moved on (current=5606119185522335336, expected=4458795021177196158); rolling back would also discard later changes. Re-run with --force after review.
-  rolled back p-b9ef06c862: {'table': 'bank.transactions', 'from_snapshot_id': 5606119185522335336, 'restored_snapshot_id': 4458795021177196158, 'dropped_columns': []}
-  rolled back p-04123b8222: {'table': 'bank.transactions', 'from_snapshot_id': 4458795021177196158, 'restored_snapshot_id': 736119098016682764, 'dropped_columns': []}
+  rollback of p-69569aa09b refused: bank.transactions has moved on (current=393665402369891699, expected=5133585525843165488); rolling back would also discard later changes. Re-run with --force after review.
+  rolled back p-2215880782: {'table': 'bank.transactions', 'from_snapshot_id': 393665402369891699, 'restored_snapshot_id': 5133585525843165488, 'dropped_columns': []}
+  rolled back p-69569aa09b: {'table': 'bank.transactions', 'from_snapshot_id': 5133585525843165488, 'restored_snapshot_id': 7902840283944095118, 'dropped_columns': []}
   profile now: {'row_count': 5000, 'null_txn_id': 0, 'duplicate_txn_id': 75, 'noncanonical_currency': 0, 'null_merchant_category': 150, 'negative_purchase_amount': 50, 'future_dated': 24}
 
 === 10. Evidence ======================================================
-  audit log  : ./.lakehouse/audit/audit.jsonl -> 84 records, chain intact, head=d2b882199901
+  audit log  : ./.lakehouse/audit/audit.jsonl -> 84 records, chain intact, head=78b9e74d669a
   audit table: governance.agent_audit rows = 84
   traces     : ./.lakehouse/traces/traces.jsonl -> 118 spans in 26 traces
   provenance : ./.lakehouse/provenance (11 prompt records)
   events     : {'APPROVAL_RECORDED': 8, 'BLOCKED': 3, 'DISCARDED': 1, 'DRY_RUN_COMPLETED': 9, 'EVAL_COMPLETED': 9, 'EXECUTED': 7, 'LAKEHOUSE_INITIALIZED': 1, 'POLICY_EVALUATED': 20, 'PROPOSED': 11, 'REVIEW_RESOLVED': 6, 'ROLLBACK_REFUSED': 1, 'ROLLED_BACK': 2, 'ROUTED_TO_REVIEW': 6}
-  currency fix trace: gia trace 348e4fd974a1767a88eda12e220e47ac
+  currency fix trace: gia trace 35a35934914eff3f5ddf99172e76f6fd

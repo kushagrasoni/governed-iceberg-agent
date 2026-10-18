@@ -7,6 +7,12 @@
 Iceberg tables. It never gets to just make them, and every step it takes leaves a record you can
 hand to an auditor.
 
+![gia demo story mode: 8 chapters from seeded data issues to rollback, ending in a scorecard](docs/demo.gif)
+
+*A real `gia demo --pause` run, recorded with [VHS](https://github.com/charmbracelet/vhs) from
+[docs/demo.tape](docs/demo.tape) (about 90 seconds; each chapter gets a title card and then its
+results). A sharper copy is in [docs/demo.mp4](docs/demo.mp4).*
+
 ## Why this exists
 
 Picture a scheduled agent that "fixes" currency codes in a regulated transactions table at 2 a.m.
@@ -16,9 +22,11 @@ pipeline wasn't built to answer them, someone ends up rebuilding the story from 
 chat threads.
 
 This repo is a small, working answer. Each proposal is a structured JSON plan. Guardrails check
-it, it runs on an Iceberg branch or staging table, evals test what was actually written, and a
-named person approves it before anything is published. Changes to regulated tables always need a
-person, even when they are low risk. Every change can be rolled back to an exact earlier snapshot.
+it, it runs on an Iceberg branch or a staging table, and evals test what was actually written.
+Then the approval gate decides. Anything that writes to a regulated table needs a named person,
+even a low-risk change. Only low-risk changes outside the regulated tables can be auto-approved.
+Every change can be rolled back to an exact earlier snapshot.
+
 The record is made of Iceberg snapshots and tags, a provenance record per plan (model, prompt
 hash, input snapshot, policy and code version), OpenTelemetry-style trace spans for each tool
 call, and a hash-chained audit log you can verify with one command.
@@ -30,15 +38,7 @@ Everything runs on a laptop: PyIceberg with a SQLite catalog on the local filesy
 for sandboxed transforms. You need no cloud keys and no Docker. **All data is synthetic** (see
 [DATA_NOTICE.md](DATA_NOTICE.md)).
 
-## See it run
-
-![gia demo story mode: 8 chapters from seeded data issues to rollback, ending in a scorecard](docs/demo.gif)
-
-*A real `gia demo --pause` run, recorded with [VHS](https://github.com/charmbracelet/vhs) from
-[docs/demo.tape](docs/demo.tape) (about 90 seconds; each chapter gets a title card and then its
-results). A sharper copy is in [docs/demo.mp4](docs/demo.mp4).*
-
-**What you're seeing**
+## What you're seeing in the demo
 
 1. **Data and seeded issues.** A 5,000-row synthetic `bank.transactions` table with planted
    defects (bad currency codes, replayed duplicates, future-dated rows), and what the profiler finds.
@@ -48,10 +48,11 @@ results). A sharper copy is in [docs/demo.mp4](docs/demo.mp4).*
 3. **Guardrails block risky plans.** A raw-PII export, a 32% "purge" and a `DROP TABLE` are
    stopped, each with the rule that fired.
 4. **Branch dry-run and evals.** Safe plans are rehearsed on an Iceberg branch or staging table
-   and must pass every eval (for example non-canonical currency 202 → 0) before anyone is asked.
-5. **Human approval gate.** A named approver signs each change. A LOW-risk change to a regulated
-   table still needs a person, and a HIGH-risk delete is refused for a standard reviewer and
-   approved by an elevated one.
+   and must pass every eval (for example non-canonical currency 202 → 0) before the approval gate
+   sees them.
+5. **Human approval gate.** A named approver signs each change to a regulated table, even a LOW-risk
+   one. A HIGH-risk delete is refused for a standard reviewer and approved by an elevated one. The
+   one auto-approval is a LOW-risk derived table in the non-regulated `analytics` namespace.
 6. **Document AI confidence routing.** Fields extracted below the 0.90 confidence bar go to a
    reviewer queue; resolved documents then go through the same gate.
 7. **Evidence trail.** Tagged Iceberg snapshots, a verified hash-chained audit log, the trace
@@ -102,9 +103,9 @@ account, no API key, no Docker.
    pytest
    ```
 
-`gia demo` finishes in under 10 seconds on a laptop and writes its evidence to `./.lakehouse/`. Every number on
-screen comes from that run (audit log, traces, provenance records and Iceberg metadata), not from
-a script.
+`gia demo` takes about 5 to 10 seconds on a laptop and writes its evidence to `./.lakehouse/`.
+Every number on screen is read back from that run (audit log, traces, provenance records and
+Iceberg metadata). None of it is hard-coded.
 
 Prefer not to install anything? Click **Open in GitHub Codespaces** above, wait for the setup to
 finish, then run `gia demo` in the terminal.
@@ -118,10 +119,14 @@ More detail, including how this maps to Polaris, Spark and Trino in production, 
 
 ## Why "evidence trail" and not "SR 11-7 compliance"
 
-In 2011, U.S. model-risk guidance was SR 11-7 / OCC Bulletin 2011-12. On **April 17, 2026** the Federal
-Reserve, OCC and FDIC replaced it with **SR 26-2 / OCC Bulletin 2026-13**, *Revised Guidance on Model
-Risk Management*. SR 26-2 says it "supersedes and replaces SR letter 11-7", and the OCC bulletin
-rescinds OCC Bulletin 2011-12. Footnote 3 of the revised guidance reads:
+For fifteen years U.S. model-risk guidance meant SR 11-7 (Federal Reserve, April 2011) and its OCC
+twin, Bulletin 2011-12. On **April 17, 2026** the Federal Reserve, OCC and FDIC replaced it with
+**SR 26-2 / OCC Bulletin 2026-13**, *Revised Guidance on Model Risk Management*. The SR letter
+"supersedes and replaces SR letter 11-7" and also SR 21-8, the 2021 statement on BSA/AML models.
+The OCC bulletin rescinds Bulletins 2011-12 and 2021-19, and the FDIC rescinded FIL-22-2017 and
+FIL-27-2021 the same day.
+
+Footnote 3 of the revised guidance reads:
 
 > "Generative AI and agentic AI models are novel and rapidly evolving. As such, they are not within
 > the scope of this guidance. Nonetheless, a banking organization's risk management and governance
@@ -131,10 +136,13 @@ rescinds OCC Bulletin 2011-12. Footnote 3 of the revised guidance reads:
 > non-agentic AI models."
 > ([SR 26-2 PDF](https://www.federalreserve.gov/supervisionreg/srletters/SR2602.pdf), p. 3 of the guidance, footnote 3)
 
-So no supervisory model-risk guidance covers the agent here. Its controls come from the bank's
-own risk management and governance. This repo is a concrete starting point for those controls.
-It borrows the long-standing model-risk *principles* (effective challenge, validation before use,
-documentation) and pairs them with NIST AI RMF 1.0 and the NIST Generative AI Profile
+So the revised model-risk guidance does not cover the agent here. Its controls have to come from
+the bank's own risk management and governance, and this repo is a concrete starting point for
+those. (The guidance's definition of "model" also leaves out "deterministic rule-based processes",
+which would cover the offline mock planner as well.)
+
+The repo borrows the long-standing model-risk *principles* (effective challenge, validation before
+use, documentation) and pairs them with NIST AI RMF 1.0 and the NIST Generative AI Profile
 (NIST AI 600-1). It does **not** claim compliance with anything.
 
 ## Commands
@@ -177,130 +185,188 @@ model.*
 
 ## What the demo shows
 
-The plain log of the same walkthrough, captured from a clean `git clone` → `pip install .` →
-`gia demo` run on 2026-10-18 at about 11:40 IST (before story mode existed; `gia demo --fast`
-prints this format today). Full output: [docs/sample-run/gia-demo.txt](docs/sample-run/gia-demo.txt).
-Snapshot and plan ids differ per run. Audit timestamps are stored in UTC.
+The plain log of the same walkthrough, from `gia demo --fast` in a clean clone (Python 3.12,
+commit `89ba7e5`, 2026-10-18). The excerpts below are copied as printed, minus blank lines; the one
+shortened line is marked with ….
+Full output: [docs/sample-run/gia-demo.txt](docs/sample-run/gia-demo.txt). Snapshot, plan and trace
+ids differ per run. Audit timestamps are stored in UTC.
 
-**1. Synthetic data with seeded defects**
+**Synthetic data with seeded defects.** The profiler finds a few more than were planted, because
+the generator's own random data has some.
 ```
-seeded bank.transactions: 5000 rows, snapshot 7862520874184501590
-profile: {'row_count': 5000, 'null_txn_id': 0, 'duplicate_txn_id': 75, 'noncanonical_currency': 202,
-          'null_merchant_category': 150, 'negative_purchase_amount': 50, 'future_dated': 24}
-```
-
-**2–5. Safe changes go through Write-Audit-Publish**
-```
-[EXECUTED] p-1d82eccde8 FIX_DATA_QUALITY     tier=MEDIUM -> bank.transactions
-           approved by reviewer.alex via demo-simulated
-[EXECUTED] p-fe87153746 ADD_COLUMN           tier=LOW    -> bank.transactions
-           approved by reviewer.alex via demo-simulated      <- LOW, but regulated table: auto-approve refused
-[EXECUTED] p-31b6c55f82 CREATE_DERIVED_TABLE tier=LOW    -> analytics.daily_merchant_summary
-           approved by auto-policy via auto-low-risk         <- LOW and non-regulated: auto-approved
-[EXECUTED] p-04123b8222 DEDUPLICATE          tier=MEDIUM -> bank.transactions
+=== 1. Init local Iceberg lakehouse (SQLite catalog + local files, synthetic data) 
+  seeded bank.transactions: 5000 rows, snapshot 8746992293146341987
+  seeded defects: {'noncanonical_currency': 197, 'null_merchant_category': 147, 'negative_purchase_amount': 49, 'future_dated': 24, 'duplicate_rows': 75}
+  profile: {'row_count': 5000, 'null_txn_id': 0, 'duplicate_txn_id': 75, 'noncanonical_currency': 202, 'null_merchant_category': 150, 'negative_purchase_amount': 50, 'future_dated': 24}
 ```
 
-**6–7. Guardrails stop what a careless agent proposes**
+**Safe changes go through Write-Audit-Publish.** Step 3 is the interesting one: the change is LOW
+risk and auto-approval is on, but the table is regulated, so a person still signs. Step 4 writes
+to the non-regulated `analytics` namespace and is the only auto-approval in the run.
 ```
-[BLOCKED ] CREATE_DERIVED_TABLE -> analytics.marketing_contacts
-           raw PII columns referenced: ['customer_email', 'customer_name'] (allowed only inside ['sha256', 'md5'])
-[BLOCKED ] DELETE_ROWS tier=HIGH -> bank.transactions
-           32.45% of rows changed > hard limit 25.0%; 32.45% of rows removed > 5.0%
-[BLOCKED ] DROP_TABLE tier=HIGH
-           DROP_TABLE is irreversible on this platform; agents may only take reversible actions
-[REJECTED] DELETE_ROWS tier=HIGH  HIGH requires role 'elevated', approver has 'standard'
-[EXECUTED] DELETE_ROWS tier=HIGH  approved by mrm.officer.priya via demo-simulated
-```
-
-**8. Document AI with per-field confidence routing**
-```
-extracted 8 docs: ready=2 held=6 queued_fields=6
-  held loan_app_002.txt: ['annual_income']        raw='$153,OOO'  conf=0.72
-  held loan_app_003.txt: ['loan_amount']          raw='$1?,500'   conf=0.20
-  held loan_app_004.txt: ['application_date']     raw='09/23/26'  conf=0.80
-[EXECUTED] APPEND_RECORDS -> bank.loan_applications  (2 clean docs, human-approved: regulated table)
-... reviewer resolves 6 fields ...
-[EXECUTED] APPEND_RECORDS -> bank.loan_applications
-bank.loan_applications rows: 8; reviewed rows: 6
-```
-Every loaded row carries `source_doc`, `source_sha256`, `extractor`, `min_confidence` and
-`reviewed_by`.
-
-**9. Reversibility (LIFO, with a safety check)**
-```
-rollback of p-04123b8222 refused: bank.transactions has moved on (current=5606…, expected=4458…);
-  rolling back would also discard later changes. Re-run with --force after review.
-rolled back p-b9ef06c862: restored_snapshot_id 4458795021177196158
-rolled back p-04123b8222: restored_snapshot_id 736119098016682764
+=== 2. Safe, approved changes (Write-Audit-Publish on an Iceberg branch) 
+  [EXECUTED] p-d6454da7a8 FIX_DATA_QUALITY     tier=MEDIUM -> bank.transactions
+             approved by reviewer.alex via demo-simulated
+             snapshot 8746992293146341987 -> 1930162885099378059   trace=35a35934914eff3f5ddf99172e76f6fd
+=== 3. LOW tier but regulated table -> --auto-approve-low-risk does NOT apply 
+  [EXECUTED] p-9ab00a9de9 ADD_COLUMN           tier=LOW    -> bank.transactions
+             approved by reviewer.alex via demo-simulated
+             snapshot 1930162885099378059 -> 7902840283944095118   trace=aadeee80a58e71fcbe8a3be8b08855f3
+=== 4. LOW tier, non-regulated analytics table -> auto-approved =======
+  [EXECUTED] p-db9b39744a CREATE_DERIVED_TABLE tier=LOW    -> analytics.daily_merchant_summary
+             approved by auto-policy via auto-low-risk
+             snapshot None -> 3567770824131279653   trace=5058de8525be39daa468eb55191c2465
+=== 5. Deduplicate replayed transactions (MEDIUM) =====================
+  [EXECUTED] p-69569aa09b DEDUPLICATE          tier=MEDIUM -> bank.transactions
+             approved by reviewer.alex via demo-simulated
+             snapshot 7902840283944095118 -> 5133585525843165488   trace=f4f6bb9efb67b104446fd7566e472d10
 ```
 
-**10. Evidence**
+**Guardrails stop what a careless agent proposes, and the approval gate checks roles.**
 ```
-audit log  : ./.lakehouse/audit/audit.jsonl -> 84 records, chain intact, head=d2b882199901
-audit table: governance.agent_audit rows = 84
-traces     : ./.lakehouse/traces/traces.jsonl -> 118 spans in 26 traces
-provenance : ./.lakehouse/provenance (11 prompt records)
+=== 6. Guardrails: what a careless agent proposes =====================
+  [BLOCKED ] p-a776f0888c CREATE_DERIVED_TABLE tier=LOW    -> analytics.marketing_contacts
+             raw PII columns referenced: ['customer_email', 'customer_name'] (allowed only inside ['sha256', 'md5'])
+  [BLOCKED ] p-b0845ffce0 DELETE_ROWS          tier=HIGH   -> bank.transactions
+             32.45% of rows changed > hard limit 25.0%; 32.45% of rows removed > 5.0%
+  [BLOCKED ] p-2eac6b37f0 DROP_TABLE           tier=HIGH   -> bank.transactions
+             DROP_TABLE is irreversible on this platform; agents may only take reversible actions
+=== 7. HIGH tier delete: standard reviewer is refused, elevated approver required 
+  [REJECTED] p-60965de4a8 DELETE_ROWS          tier=HIGH   -> bank.transactions
+             HIGH requires role 'elevated', approver has 'standard'
+  [EXECUTED] p-2215880782 DELETE_ROWS          tier=HIGH   -> bank.transactions
+             approved by mrm.officer.priya via demo-simulated
+             snapshot 5133585525843165488 -> 393665402369891699   trace=e3830c3110a2c1e8b667d64fe424f628
+```
+
+**Document AI with per-field confidence routing.** Two clean documents load straight away (still
+behind a human approval, because `bank.loan_applications` is regulated). The other six wait until a
+reviewer resolves the low-confidence field.
+```
+=== 8. Document AI with per-field confidence routing ==================
+  extracted 8 docs: ready=2 held=6 queued_fields=6
+    held loan_app_002.txt: ['annual_income']
+    held loan_app_003.txt: ['loan_amount']
+    held loan_app_004.txt: ['application_date']
+    held loan_app_006.txt: ['annual_income']
+    held loan_app_007.txt: ['loan_amount']
+    held loan_app_008.txt: ['application_date']
+  [EXECUTED] p-4d8c4365de APPEND_RECORDS       tier=MEDIUM -> bank.loan_applications
+             approved by reviewer.alex via demo-simulated
+             snapshot 3651590677270913634 -> 752532673956218148   trace=d78c9ef507b8ab6bd3872a8a2b49848a
+  reviewer resolves the queue (simulated reviewer reads the synthetic answer key):
+    3dc5a1c2:annual_income     annual_income     raw='$153,OOO'   conf=0.72 -> 153000.0
+    f7f4e913:loan_amount       loan_amount       raw='$1?,500'    conf=0.20 -> 13500.0
+    0365c1b8:application_date  application_date  raw='09/23/26'   conf=0.80 -> '2026-09-23'
+    b627c51a:annual_income     annual_income     raw='$2O2,OOO'   conf=0.72 -> 202000.0
+    1347e024:loan_amount       loan_amount       raw='$1?,000'    conf=0.20 -> 12000.0
+    a8d404c3:application_date  application_date  raw='09/16/26'   conf=0.80 -> '2026-09-16'
+  [EXECUTED] p-4509c2ac93 APPEND_RECORDS       tier=MEDIUM -> bank.loan_applications
+             approved by reviewer.alex via demo-simulated
+             snapshot 752532673956218148 -> 8274209765539018920   trace=e799e9f6780f1edebe20385c420d4362
+  bank.loan_applications rows: 8; reviewed rows: 6
+```
+
+**Reversibility.** Undoing the dedup first is refused, because the delete sits on top of it. Newest
+first works, and the currency fix stays.
+```
+=== 9. Reversibility ==================================================
+  rollback of p-69569aa09b refused: bank.transactions has moved on (current=393665402369891699, expected=5133585525843165488); rolling back would also discard later changes. Re-run with --force after review.
+  rolled back p-2215880782: {'table': 'bank.transactions', 'from_snapshot_id': 393665402369891699, 'restored_snapshot_id': 5133585525843165488, 'dropped_columns': []}
+  rolled back p-69569aa09b: {'table': 'bank.transactions', 'from_snapshot_id': 5133585525843165488, 'restored_snapshot_id': 7902840283944095118, 'dropped_columns': []}
+  profile now: {'row_count': 5000, 'null_txn_id': 0, 'duplicate_txn_id': 75, 'noncanonical_currency': 0, 'null_merchant_category': 150, 'negative_purchase_amount': 50, 'future_dated': 24}
+```
+
+**Evidence.**
+```
+=== 10. Evidence ======================================================
+  audit log  : ./.lakehouse/audit/audit.jsonl -> 84 records, chain intact, head=78b9e74d669a
+  audit table: governance.agent_audit rows = 84
+  traces     : ./.lakehouse/traces/traces.jsonl -> 118 spans in 26 traces
+  provenance : ./.lakehouse/provenance (11 prompt records)
 ```
 
 ### The approval prompt (real run, piped answers)
 
-From [docs/sample-run/interactive-approval.txt](docs/sample-run/interactive-approval.txt):
+From [docs/sample-run/interactive-approval.txt](docs/sample-run/interactive-approval.txt), which
+also has the rollback, `gia audit --verify` and the full plan file:
 
 ```
-PLAN p-eeac65e75e  FIX_DATA_QUALITY  ->  bank.transactions
+$ printf "y\nCHG-1042 reviewed diff + DQ checks\n" | gia run --goal "fill missing merchant category" --planner mock --approver kushagra.s
+PLAN p-a8252f8582  FIX_DATA_QUALITY  ->  bank.transactions
+  rationale : Null merchant_category breaks downstream spend reporting; use an explicit UNCATEGORIZED bucket instead of NULL.
   sql       : SELECT * REPLACE (coalesce(merchant_category, 'UNCATEGORIZED') AS merchant_category) FROM source
   risk tier : MEDIUM (planner declared MEDIUM); regulated target: True
-  dry run   : branch wap_p_eeac65e75e snapshot 7955417394091964119
+  dry run   : branch wap_p_a8252f8582 snapshot 7338717900379086671
   diff      : {'pre_rows': 5000, 'post_rows': 5000, 'removed_or_modified': 150, 'added_or_modified': 150, 'rows_changed': 150}
-  checks    : operation_allowlisted=ok, ..., schema_compatible=ok, dq_no_regression=ok,
-              expected_effect:null_merchant_category=ok, pii_values_unchanged=ok, blast_radius_hard_limit=ok, ...
-Approve plan p-eeac65e75e [MEDIUM, REGULATED] as kushagra.s (standard)? [y/N]: Reason / ticket reference:
-  [EXECUTED] p-eeac65e75e FIX_DATA_QUALITY     tier=MEDIUM -> bank.transactions
+  checks    : operation_allowlisted=ok, namespace_writable=ok, target_exists=ok, sql_single_statement=ok, sql_is_select=ok, sql_no_ddl_dml=ok, pii_in_place_untouched=ok, … (18 checks, all ok)
+Approve plan p-a8252f8582 [MEDIUM, REGULATED] as kushagra.s (standard)? [y/N]: Reason / ticket reference:   [EXECUTED] p-a8252f8582 FIX_DATA_QUALITY     tier=MEDIUM -> bank.transactions
              approved by kushagra.s via interactive
+             snapshot 5378620011383155603 -> 7338717900379086671   trace=cb0142933d96a08d5cfe6b3db2f34ee2
 ```
 
-The same plan's audit trail, trace and Iceberg history:
+The same plan's audit trail, trace and Iceberg history (after the rollback):
 
 ```
-$ gia audit --plan p-eeac65e75e
- 2 PROPOSED          mock-planner   FIX_DATA_QUALITY by rule-based-mock prompt=d5a6d87fbcca
- 3 POLICY_EVALUATED  policy-engine  static: ALLOW tier=MEDIUM failed=[]
- 4 DRY_RUN_COMPLETED executor
- 5 EVAL_COMPLETED    evaluator      passed=True failed=[] diff={... 'rows_changed': 150}
- 6 POLICY_EVALUATED  policy-engine  blast_radius: ALLOW tier=MEDIUM failed=[]
- 7 APPROVAL_RECORDED kushagra.s     APPROVED by kushagra.s (interactive) at 2026-10-18T06:10:27+00:00
- 8 EXECUTED          executor       bank.transactions 6130985874080627685 -> 7955417394091964119 rollback=restore_snapshot
-
-$ gia trace bcb807318bd2aa64c5d3c7252fcc4411
-agent.run_plan                   257.8 ms  OK
-  guardrail.static_policy            1.4 ms  OK  {'decision': 'ALLOW', 'risk_tier': 'MEDIUM', 'failed': []}
-  tool.dry_run                      54.9 ms  OK  {'staged_snapshot_id': 7955417394091964119}
-  eval.pre_execution                63.2 ms  OK  {'passed': True, 'failed': []}
+$ gia audit --plan p-a8252f8582
+   2 2026-10-18T10:16:06.559+00:00 PROPOSED             p-a8252f8582   mock-planner     FIX_DATA_QUALITY by rule-based-mock prompt=3257dadc7194
+   3 2026-10-18T10:16:06.625+00:00 POLICY_EVALUATED     p-a8252f8582   policy-engine    static: ALLOW tier=MEDIUM failed=[]
+   4 2026-10-18T10:16:06.705+00:00 DRY_RUN_COMPLETED    p-a8252f8582   executor         
+   5 2026-10-18T10:16:06.785+00:00 EVAL_COMPLETED       p-a8252f8582   evaluator        passed=True failed=[] diff={'added_or_modified': 150, 'post_rows': 5000, 'pre_rows': 5000, 'removed_or_modified': 150, 'rows_changed': 150}
+   6 2026-10-18T10:16:06.802+00:00 POLICY_EVALUATED     p-a8252f8582   policy-engine    blast_radius: ALLOW tier=MEDIUM failed=[]
+   7 2026-10-18T10:16:06.817+00:00 APPROVAL_RECORDED    p-a8252f8582   kushagra.s       APPROVED by kushagra.s (interactive) at 2026-10-18T10:16:06+00:00
+   8 2026-10-18T10:16:06.840+00:00 EXECUTED             p-a8252f8582   executor         bank.transactions 5378620011383155603 -> 7338717900379086671 rollback=restore_snapshot
+$ gia trace cb0142933d96a08d5cfe6b3db2f34ee2
+agent.run_plan                   297.2 ms  OK  
+  guardrail.static_policy            1.5 ms  OK  {'decision': 'ALLOW', 'risk_tier': 'MEDIUM', 'failed': []}
+  tool.dry_run                      63.4 ms  OK  {'staged_snapshot_id': 7338717900379086671}
+  eval.pre_execution                64.3 ms  OK  {'passed': True, 'failed': []}
   guardrail.blast_radius             0.0 ms  OK  {'decision': 'ALLOW', 'risk_tier': 'MEDIUM'}
-  human.approval_gate                0.1 ms  OK  {'decision': 'APPROVED', 'approver': 'kushagra.s'}
-  tool.iceberg_commit                6.7 ms  OK  {'post_snapshot_id': 7955417394091964119}
-
-$ gia history            # after `gia rollback p-eeac65e75e --approver ops.lead`
-* 6130985874080627685  parent=-                    append  plan=-             stage=seed     refs=main
-  5098696058921422348  parent=6130985874080627685  delete  plan=p-eeac65e75e  stage=dry-run  refs=
-  7955417394091964119  parent=5098696058921422348  append  plan=p-eeac65e75e  stage=dry-run  refs=approved-p-eeac65e75e
+  human.approval_gate                0.1 ms  OK  {'risk_tier': 'MEDIUM', 'decision': 'APPROVED', 'approver': 'kushagra.s'}
+  tool.iceberg_commit                7.7 ms  OK  {'post_snapshot_id': 7338717900379086671}
+$ gia rollback p-a8252f8582 --approver ops.lead
+{
+  "table": "bank.transactions",
+  "from_snapshot_id": 7338717900379086671,
+  "restored_snapshot_id": 5378620011383155603,
+  "dropped_columns": []
+}
+$ gia history
+* 5378620011383155603  parent=-                    append    plan=-              stage=seed     refs=main
+  2131743423538005965  parent=5378620011383155603  delete    plan=p-a8252f8582   stage=dry-run  refs=
+  7338717900379086671  parent=2131743423538005965  append    plan=p-a8252f8582   stage=dry-run  refs=approved-p-a8252f8582
+$ gia audit --verify
+OK   9 records, chain intact, head=072e407743ed
 ```
 
 After the rollback, the published snapshot still exists and keeps its `approved-<plan>` tag. Main
 just points back at the seed snapshot. The record of what happened survives the undo.
 
-Provenance record written for that plan (`.lakehouse/plans/<plan_id>.json`):
+Provenance record written for that plan (the `provenance` half of `.lakehouse/plans/p-a8252f8582.json`):
 
 ```json
 {
- "planner": "mock-planner",
- "model": "rule-based-mock",
- "model_version": "governed-iceberg-agent 0.1.0 / rules sha256:a3d803685164c501",
- "system_prompt_sha256": "06b3dc7a…", "user_prompt_sha256": "d5a6d87f…", "response_sha256": "08dfbdd9…",
- "prompt_record": ".lakehouse/provenance/p-eeac65e75e.prompt.json",
- "inputs": [{"kind": "iceberg_table", "table": "bank.transactions",
-             "snapshot_id": 6130985874080627685, "table_uuid": "8589d5e3-…"}],
- "policy_version": "2026.10-demo", "code_version": "0.1.0+3cb36ee"
+  "planner": "mock-planner",
+  "model": "rule-based-mock",
+  "model_version": "governed-iceberg-agent 0.1.0 / rules sha256:a3d803685164c501",
+  "endpoint": null,
+  "temperature": null,
+  "system_prompt_sha256": "06b3dc7a250bc506a887ea2f6c85c02b54767a6af6db52bab08d2ae2ad710023",
+  "user_prompt_sha256": "3257dadc7194b2bbbd91744fa1f42b23a20bbed476d162392d1ef5d79f84f005",
+  "response_sha256": "08dfbdd92920ea44509f35ae89c53e8831a84b2f5f84f8f79c25f7121c707676",
+  "prompt_record": "./.lakehouse/provenance/p-a8252f8582.prompt.json",
+  "prompt_record_sha256": "5464453539c6a5da0cb99f79395b39ab4e7bc0142f10d7b7eae95cc7f7395b08",
+  "inputs": [
+    {
+      "kind": "iceberg_table",
+      "table": "bank.transactions",
+      "snapshot_id": 5378620011383155603,
+      "table_uuid": "4be0841d-5cff-49d2-b7d1-2eeba02af84b"
+    }
+  ],
+  "policy_version": "2026.10-demo",
+  "code_version": "0.1.0+89ba7e5",
+  "generated_at": "2026-10-18T10:16:06+00:00"
 }
 ```
 With `--planner llm` the same record holds the provider's returned `model`, `system_fingerprint`
@@ -313,7 +379,8 @@ With `--planner llm` the same record holds the provider's returned `model`, `sys
   `expected_effect` (e.g. `{"duplicate_txn_id": 0}`). Deletes are written as `SELECT … WHERE NOT (…)`.
   The agent describes the end state, and the platform computes the diff.
 * **Guardrails** (`policy.py`, `default_policy.json`). Operations must be on an allowlist.
-  Irreversible operations (`DROP_TABLE`, `DROP_COLUMN`, `TRUNCATE`, `EXPIRE_SNAPSHOTS`) are refused.
+  Irreversible operations (`DROP_TABLE`, `DROP_COLUMN`, `TRUNCATE`, `EXPIRE_SNAPSHOTS`,
+  `REWRITE_SCHEMA_TYPE`) are refused.
   `DELETE_ROWS` needs an *elevated* approver. SQL must be one read-only statement with no DDL/DML
   keywords. Derived tables may not carry raw PII, only `sha256()`/`md5()` of it. In-place changes
   that touch PII escalate to HIGH. Blast radius: more than 10% of rows changed escalates to HIGH,
@@ -438,7 +505,8 @@ pip install -e ".[dev]" && pytest
 They cover the guardrails (allowlist, irreversible ops, DDL/DML in SQL, PII rules, tier floor,
 blast radius, sandbox, expected effect, DQ regression), the approval gate (auto-approve scope,
 self-approval, roles, interactive prompt, EOF fail-closed, rejected plans leaving main untouched),
-the audit log (tamper and deletion detection, event sequence, snapshot linkage, Iceberg mirror, forced re-init archiving rather than deleting evidence),
+the audit log (tamper and deletion detection, event sequence, snapshot linkage, Iceberg mirror,
+forced re-init archiving rather than deleting evidence),
 provenance, tracing, rollback (snapshot restore, `ADD_COLUMN` and derived-table reversal, refusal
 when the table has moved, `--force`, stale base), Document AI routing end to end, the LLM planner
 against a fake endpoint (including a prompt-injected `DELETE`), the real CLI with a piped
@@ -446,7 +514,7 @@ approval prompt, and `gia demo` in story, `--pause` and `--fast` modes.
 
 ## Limitations
 
-See [docs/architecture.md](docs/architecture.md#limitations). In short: this is a single-process
+See [docs/architecture.md](docs/architecture.md#5-limitations). In short: this is a single-process
 demo. The audit chain is tamper-*evident*, not tamper-*proof*. Approver identity is a CLI string,
 not SSO. The PII check is name-based plus a regex value scan, which is not a classifier. The
 Document AI extractor is regex-based on synthetic text, not OCR. The optional REST/Polaris catalog

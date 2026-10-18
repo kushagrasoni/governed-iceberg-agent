@@ -1,14 +1,96 @@
+# Captured 2026-10-18 from a clean clone at commit 89ba7e5, Python 3.12. Only change: the absolute
+# working-directory prefix in "prompt_record" was shortened to ./ .
+
+$ gia init   # fresh lakehouse, then:
 $ printf "y\nCHG-1042 reviewed diff + DQ checks\n" | gia run --goal "fill missing merchant category" --planner mock --approver kushagra.s
 
 ------------------------------------------------------------------------
-PLAN p-eeac65e75e  FIX_DATA_QUALITY  ->  bank.transactions
+PLAN p-a8252f8582  FIX_DATA_QUALITY  ->  bank.transactions
   rationale : Null merchant_category breaks downstream spend reporting; use an explicit UNCATEGORIZED bucket instead of NULL.
   sql       : SELECT * REPLACE (coalesce(merchant_category, 'UNCATEGORIZED') AS merchant_category) FROM source
   risk tier : MEDIUM (planner declared MEDIUM); regulated target: True
-  dry run   : branch wap_p_eeac65e75e snapshot 7955417394091964119
+  dry run   : branch wap_p_a8252f8582 snapshot 7338717900379086671
   diff      : {'pre_rows': 5000, 'post_rows': 5000, 'removed_or_modified': 150, 'added_or_modified': 150, 'rows_changed': 150}
   checks    : operation_allowlisted=ok, namespace_writable=ok, target_exists=ok, sql_single_statement=ok, sql_is_select=ok, sql_no_ddl_dml=ok, pii_in_place_untouched=ok, schema_compatible=ok, row_count_preserved=ok, not_null:txn_id=ok, not_null:account_id=ok, not_null:txn_ts=ok, not_null:amount=ok, dq_no_regression=ok, expected_effect:null_merchant_category=ok, pii_values_unchanged=ok, blast_radius_hard_limit=ok, rows_removed_limit=ok
 ------------------------------------------------------------------------
-Approve plan p-eeac65e75e [MEDIUM, REGULATED] as kushagra.s (standard)? [y/N]: Reason / ticket reference:   [EXECUTED] p-eeac65e75e FIX_DATA_QUALITY     tier=MEDIUM -> bank.transactions
+Approve plan p-a8252f8582 [MEDIUM, REGULATED] as kushagra.s (standard)? [y/N]: Reason / ticket reference:   [EXECUTED] p-a8252f8582 FIX_DATA_QUALITY     tier=MEDIUM -> bank.transactions
              approved by kushagra.s via interactive
-             snapshot 6130985874080627685 -> 7955417394091964119   trace=bcb807318bd2aa64c5d3c7252fcc4411
+             snapshot 5378620011383155603 -> 7338717900379086671   trace=cb0142933d96a08d5cfe6b3db2f34ee2
+
+$ gia audit --plan p-a8252f8582
+   2 2026-10-18T10:16:06.559+00:00 PROPOSED             p-a8252f8582   mock-planner     FIX_DATA_QUALITY by rule-based-mock prompt=3257dadc7194
+   3 2026-10-18T10:16:06.625+00:00 POLICY_EVALUATED     p-a8252f8582   policy-engine    static: ALLOW tier=MEDIUM failed=[]
+   4 2026-10-18T10:16:06.705+00:00 DRY_RUN_COMPLETED    p-a8252f8582   executor         
+   5 2026-10-18T10:16:06.785+00:00 EVAL_COMPLETED       p-a8252f8582   evaluator        passed=True failed=[] diff={'added_or_modified': 150, 'post_rows': 5000, 'pre_rows': 5000, 'removed_or_modified': 150, 'rows_changed': 150}
+   6 2026-10-18T10:16:06.802+00:00 POLICY_EVALUATED     p-a8252f8582   policy-engine    blast_radius: ALLOW tier=MEDIUM failed=[]
+   7 2026-10-18T10:16:06.817+00:00 APPROVAL_RECORDED    p-a8252f8582   kushagra.s       APPROVED by kushagra.s (interactive) at 2026-10-18T10:16:06+00:00
+   8 2026-10-18T10:16:06.840+00:00 EXECUTED             p-a8252f8582   executor         bank.transactions 5378620011383155603 -> 7338717900379086671 rollback=restore_snapshot
+
+$ gia trace cb0142933d96a08d5cfe6b3db2f34ee2
+agent.run_plan                   297.2 ms  OK  
+  guardrail.static_policy            1.5 ms  OK  {'decision': 'ALLOW', 'risk_tier': 'MEDIUM', 'failed': []}
+  tool.dry_run                      63.4 ms  OK  {'staged_snapshot_id': 7338717900379086671}
+  eval.pre_execution                64.3 ms  OK  {'passed': True, 'failed': []}
+  guardrail.blast_radius             0.0 ms  OK  {'decision': 'ALLOW', 'risk_tier': 'MEDIUM'}
+  human.approval_gate                0.1 ms  OK  {'risk_tier': 'MEDIUM', 'decision': 'APPROVED', 'approver': 'kushagra.s'}
+  tool.iceberg_commit                7.7 ms  OK  {'post_snapshot_id': 7338717900379086671}
+
+$ gia rollback p-a8252f8582 --approver ops.lead
+{
+  "table": "bank.transactions",
+  "from_snapshot_id": 7338717900379086671,
+  "restored_snapshot_id": 5378620011383155603,
+  "dropped_columns": []
+}
+
+$ gia history
+* 5378620011383155603  parent=-                    append    plan=-              stage=seed     refs=main
+  2131743423538005965  parent=5378620011383155603  delete    plan=p-a8252f8582   stage=dry-run  refs=
+  7338717900379086671  parent=2131743423538005965  append    plan=p-a8252f8582   stage=dry-run  refs=approved-p-a8252f8582
+
+$ gia audit --verify
+OK   9 records, chain intact, head=072e407743ed
+
+$ cat .lakehouse/plans/p-a8252f8582.json
+{
+  "plan": {
+    "operation": "FIX_DATA_QUALITY",
+    "target_table": "bank.transactions",
+    "sql": "SELECT * REPLACE (coalesce(merchant_category, 'UNCATEGORIZED') AS merchant_category) FROM source",
+    "rationale": "Null merchant_category breaks downstream spend reporting; use an explicit UNCATEGORIZED bucket instead of NULL.",
+    "risk_tier": "MEDIUM",
+    "output_table": null,
+    "new_columns": [],
+    "expected_effect": {
+      "null_merchant_category": 0
+    },
+    "inputs": {},
+    "goal": "fill missing merchant category",
+    "planner": "mock-planner",
+    "plan_id": "p-a8252f8582",
+    "created_at": "2026-10-18T10:16:06+00:00"
+  },
+  "provenance": {
+    "planner": "mock-planner",
+    "model": "rule-based-mock",
+    "model_version": "governed-iceberg-agent 0.1.0 / rules sha256:a3d803685164c501",
+    "endpoint": null,
+    "temperature": null,
+    "system_prompt_sha256": "06b3dc7a250bc506a887ea2f6c85c02b54767a6af6db52bab08d2ae2ad710023",
+    "user_prompt_sha256": "3257dadc7194b2bbbd91744fa1f42b23a20bbed476d162392d1ef5d79f84f005",
+    "response_sha256": "08dfbdd92920ea44509f35ae89c53e8831a84b2f5f84f8f79c25f7121c707676",
+    "prompt_record": "./.lakehouse/provenance/p-a8252f8582.prompt.json",
+    "prompt_record_sha256": "5464453539c6a5da0cb99f79395b39ab4e7bc0142f10d7b7eae95cc7f7395b08",
+    "inputs": [
+      {
+        "kind": "iceberg_table",
+        "table": "bank.transactions",
+        "snapshot_id": 5378620011383155603,
+        "table_uuid": "4be0841d-5cff-49d2-b7d1-2eeba02af84b"
+      }
+    ],
+    "policy_version": "2026.10-demo",
+    "code_version": "0.1.0+89ba7e5",
+    "generated_at": "2026-10-18T10:16:06+00:00"
+  }
+}
