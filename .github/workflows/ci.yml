@@ -33,7 +33,12 @@ jobs:
       - name: Run tests
         run: python -m pytest
 
-      - name: Smoke test - offline demo
+      - name: Smoke test - offline demo (plain log)
         env:
           GIA_HOME: ${{ runner.temp }}/gia-demo
-        run: gia demo
+        run: gia demo --fast
+
+      - name: Smoke test - story mode (non-interactive, no pauses)
+        env:
+          GIA_HOME: ${{ runner.temp }}/gia-story
+        run: gia demo --story < /dev/null

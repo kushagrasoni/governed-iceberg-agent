@@ -1,4 +1,5 @@
-"""`gia` command line. Run `gia demo` for the end-to-end walkthrough (offline, synthetic data)."""
+"""`gia` command line. Run `gia demo` for the end-to-end walkthrough (offline, synthetic data);
+`gia demo --fast` prints the same run as a plain log."""
 from __future__ import annotations
 
 import argparse
@@ -160,6 +161,17 @@ def cmd_review(args):
     print(f"  resolved {args.item_id} = {args.value!r} by {args.reviewer}")
 
 
+def cmd_demo(args):
+    if args.fast:
+        if args.pause:
+            sys.exit("gia demo: --pause only applies to story mode (drop --fast)")
+        from .demo import main as fast_main
+        fast_main(args)
+    else:
+        from .story import main as story_main
+        story_main(args)
+
+
 def _add_approval_flags(p):
     p.add_argument("--approver", help="named human approver recorded in the audit log")
     p.add_argument("--approver-role", default="standard", choices=["standard", "elevated"])
@@ -227,9 +239,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--reviewer")
     p.set_defaults(fn=cmd_review)
 
-    p = sub.add_parser("demo", help="end-to-end scripted walkthrough (offline)")
+    p = sub.add_parser("demo", help="end-to-end scripted walkthrough in 8 chapters (offline)")
     p.add_argument("--interactive", action="store_true", help="prompt for approvals instead of using a scripted reviewer")
-    p.set_defaults(fn=lambda a: __import__("governed_agent.demo", fromlist=["main"]).main(a))
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument("--story", action="store_true", help="guided story mode with panels, tables and a scorecard (default)")
+    mode.add_argument("--fast", action="store_true", help="plain log output, no formatting (for CI and logs)")
+    p.add_argument("--pause", action="store_true", help="story mode: wait for Enter at each chapter (for live presenting)")
+    p.set_defaults(fn=cmd_demo)
     return ap
 
 
