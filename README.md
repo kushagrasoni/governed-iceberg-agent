@@ -1,6 +1,7 @@
 # governed-iceberg-agent
 
 [![CI](https://github.com/kushagrasoni/governed-iceberg-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/kushagrasoni/governed-iceberg-agent/actions/workflows/ci.yml)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kushagrasoni/governed-iceberg-agent)
 
 **The evidence trail for agentic pipelines.** This is a small, working demo of an LLM agent that
 *proposes* changes to Apache Iceberg tables (fix a data-quality issue, add a column, build a
@@ -49,6 +50,14 @@ In about 10 seconds the demo builds a small synthetic bank lakehouse, lets a rul
 propose fixes, and prints each plan as `EXECUTED`, `BLOCKED` or `REJECTED` with who approved it,
 followed by rollbacks and a summary of the audit log, traces and provenance records it wrote to
 `./.lakehouse/`.
+
+![gia demo running in a terminal](docs/demo.gif)
+
+*A real `gia demo` run, recorded with asciinema and agg. Output is shown one section at a time
+so it can be read; the run itself takes about 5 to 10 seconds.*
+
+Prefer not to install anything? Click **Open in GitHub Codespaces** above, wait for the setup to
+finish, then run `gia demo` in the terminal.
 
 ![architecture](docs/architecture.png)
 
