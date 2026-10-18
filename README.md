@@ -327,7 +327,6 @@ src/governed_agent/
 tests/                      40 pytest tests
 docs/architecture.md        architecture, production mapping (Polaris/Spark/Trino), limitations
 docs/architecture.mmd/.png  diagram source + render
-drafts/medium-article.md    article draft (not published)
 ```
 
 ## Tests
