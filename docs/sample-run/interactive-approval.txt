@@ -1,0 +1,14 @@
+$ printf "y\nCHG-1042 reviewed diff + DQ checks\n" | gia run --goal "fill missing merchant category" --planner mock --approver kushagra.s
+
+------------------------------------------------------------------------
+PLAN p-eeac65e75e  FIX_DATA_QUALITY  ->  bank.transactions
+  rationale : Null merchant_category breaks downstream spend reporting; use an explicit UNCATEGORIZED bucket instead of NULL.
+  sql       : SELECT * REPLACE (coalesce(merchant_category, 'UNCATEGORIZED') AS merchant_category) FROM source
+  risk tier : MEDIUM (planner declared MEDIUM); regulated target: True
+  dry run   : branch wap_p_eeac65e75e snapshot 7955417394091964119
+  diff      : {'pre_rows': 5000, 'post_rows': 5000, 'removed_or_modified': 150, 'added_or_modified': 150, 'rows_changed': 150}
+  checks    : operation_allowlisted=ok, namespace_writable=ok, target_exists=ok, sql_single_statement=ok, sql_is_select=ok, sql_no_ddl_dml=ok, pii_in_place_untouched=ok, schema_compatible=ok, row_count_preserved=ok, not_null:txn_id=ok, not_null:account_id=ok, not_null:txn_ts=ok, not_null:amount=ok, dq_no_regression=ok, expected_effect:null_merchant_category=ok, pii_values_unchanged=ok, blast_radius_hard_limit=ok, rows_removed_limit=ok
+------------------------------------------------------------------------
+Approve plan p-eeac65e75e [MEDIUM, REGULATED] as kushagra.s (standard)? [y/N]: Reason / ticket reference:   [EXECUTED] p-eeac65e75e FIX_DATA_QUALITY     tier=MEDIUM -> bank.transactions
+             approved by kushagra.s via interactive
+             snapshot 6130985874080627685 -> 7955417394091964119   trace=bcb807318bd2aa64c5d3c7252fcc4411
