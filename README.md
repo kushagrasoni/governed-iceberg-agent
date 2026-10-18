@@ -3,20 +3,76 @@
 [![CI](https://github.com/kushagrasoni/governed-iceberg-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/kushagrasoni/governed-iceberg-agent/actions/workflows/ci.yml)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kushagrasoni/governed-iceberg-agent)
 
-**The evidence trail for agentic pipelines.** This is a small, working demo of an LLM agent that
-*proposes* changes to Apache Iceberg tables (fix a data-quality issue, add a column, build a
-derived table, ingest extracted documents). It never gets to *just do* them. Each proposal is a
-structured JSON plan. The plan goes through guardrails, runs on an Iceberg branch, passes
-pre-execution evals, waits for a named human approver, and only then gets published. It can
-always be rolled back. Every step leaves evidence: Iceberg snapshots for lineage, a provenance
-record per action, OpenTelemetry-style trace spans for every tool call, and a hash-chained
-audit log.
+**The evidence trail for agentic pipelines.** An LLM agent may *propose* changes to Apache
+Iceberg tables. It never gets to just make them, and every step it takes leaves a record you can
+hand to an auditor.
 
-> Thesis: agents in a bank are fine when every action is **reviewable** and **reversible**.
+## Why this exists
 
-Everything runs on a laptop: PyIceberg with a SQLite catalog on the local filesystem, DuckDB for
-sandboxed transforms, no cloud keys, no Docker. **All data is synthetic** (see
+Picture a scheduled agent that "fixes" currency codes in a regulated transactions table at 2 a.m.
+Three weeks later an examiner asks four questions: who approved that change, which model
+proposed it, what data it looked at, and can you put the table back the way it was? If the
+pipeline wasn't built to answer them, someone ends up rebuilding the story from job logs and
+chat threads.
+
+This repo is a small, working answer. Each proposal is a structured JSON plan. Guardrails check
+it, it runs on an Iceberg branch or staging table, evals test what was actually written, and a
+named person approves it before anything is published. Changes to regulated tables always need a
+person, even when they are low risk. Every change can be rolled back to an exact earlier snapshot.
+The record is made of Iceberg snapshots and tags, a provenance record per plan (model, prompt
+hash, input snapshot, policy and code version), OpenTelemetry-style trace spans for each tool
+call, and a hash-chained audit log you can verify with one command.
+
+The working rule: an agent can act on bank data only when every action is **reviewable** and
+**reversible**.
+
+Everything runs on a laptop: PyIceberg with a SQLite catalog on the local filesystem and DuckDB
+for sandboxed transforms. You need no cloud keys and no Docker. **All data is synthetic** (see
 [DATA_NOTICE.md](DATA_NOTICE.md)).
+
+## See it run
+
+![gia demo story mode: 8 chapters from seeded data issues to rollback, ending in a scorecard](docs/demo.gif)
+
+*A real `gia demo --pause` run, recorded with [VHS](https://github.com/charmbracelet/vhs) from
+[docs/demo.tape](docs/demo.tape) (about 90 seconds; each chapter gets a title card and then its
+results). A sharper copy is in [docs/demo.mp4](docs/demo.mp4).*
+
+**What you're seeing**
+
+1. **Data and seeded issues.** A 5,000-row synthetic `bank.transactions` table with planted
+   defects (bad currency codes, replayed duplicates, future-dated rows), and what the profiler finds.
+2. **The agent proposes.** The agent turns a goal into a JSON plan (operation, SQL, rationale,
+   risk tier). Its provenance (model, prompt hash, input snapshot, policy and code version) is
+   recorded before anything runs.
+3. **Guardrails block risky plans.** A raw-PII export, a 32% "purge" and a `DROP TABLE` are
+   stopped, each with the rule that fired.
+4. **Branch dry-run and evals.** Safe plans are rehearsed on an Iceberg branch or staging table
+   and must pass every eval (for example non-canonical currency 202 → 0) before anyone is asked.
+5. **Human approval gate.** A named approver signs each change. A LOW-risk change to a regulated
+   table still needs a person, and a HIGH-risk delete is refused for a standard reviewer and
+   approved by an elevated one.
+6. **Document AI confidence routing.** Fields extracted below the 0.90 confidence bar go to a
+   reviewer queue; resolved documents then go through the same gate.
+7. **Evidence trail.** Tagged Iceberg snapshots, a verified hash-chained audit log, the trace
+   spans of one change, and its provenance record.
+8. **Rollback.** An unsafe undo is refused; the delete and the dedup are then rolled back to
+   exact earlier snapshots while the currency fix stays.
+
+Then a **scorecard** counts what was proposed, executed, blocked, refused, reviewed and rolled
+back, and re-verifies the audit chain.
+
+**Ways to run it**
+
+```bash
+gia demo                 # story mode (default): all 8 chapters, no pauses
+gia demo --pause         # presenting live: a title card per chapter, Enter to advance
+gia demo --interactive   # you are the approver: answer the y/N approval prompts yourself
+gia demo --fast          # plain log output, no formatting (what CI runs)
+```
+
+`--pause` and `--interactive` can be combined. With no terminal attached (CI, pipes),
+`--pause` simply carries on without waiting.
 
 ## Try it in 5 minutes
 
@@ -46,20 +102,19 @@ account, no API key, no Docker.
    pytest
    ```
 
-In about 10 seconds the demo builds a small synthetic bank lakehouse, lets a rule-based agent
-propose fixes, and prints each plan as `EXECUTED`, `BLOCKED` or `REJECTED` with who approved it,
-followed by rollbacks and a summary of the audit log, traces and provenance records it wrote to
-`./.lakehouse/`.
-
-![gia demo running in a terminal](docs/demo.gif)
-
-*A real `gia demo` run, recorded with asciinema and agg. Output is shown one section at a time
-so it can be read; the run itself takes about 5 to 10 seconds.*
+`gia demo` finishes in under 10 seconds on a laptop and writes its evidence to `./.lakehouse/`. Every number on
+screen comes from that run (audit log, traces, provenance records and Iceberg metadata), not from
+a script.
 
 Prefer not to install anything? Click **Open in GitHub Codespaces** above, wait for the setup to
 finish, then run `gia demo` in the terminal.
 
-![architecture](docs/architecture.png)
+## How the pieces fit
+
+![Architecture: documents and source tables flow through Document AI (low-confidence fields go to a reviewer queue) into the agentic pipeline, which emits a JSON plan; guardrails and evals run a dry run on an Iceberg branch; a human approval gate decides; approved plans are published to the Iceberg lakehouse with a tag and rollback pointer, rejected ones are discarded; every step writes to the hash-chained audit log](docs/architecture.png)
+
+More detail, including how this maps to Polaris, Spark and Trino in production, is in
+[docs/architecture.md](docs/architecture.md).
 
 ## Why "evidence trail" and not "SR 11-7 compliance"
 
@@ -122,8 +177,9 @@ model.*
 
 ## What the demo shows
 
-Captured from a clean `git clone` → `pip install .` → `gia demo` run on 2026-10-18 at about
-11:40 IST. Full output: [docs/sample-run/gia-demo.txt](docs/sample-run/gia-demo.txt).
+The plain log of the same walkthrough, captured from a clean `git clone` → `pip install .` →
+`gia demo` run on 2026-10-18 at about 11:40 IST (before story mode existed; `gia demo --fast`
+prints this format today). Full output: [docs/sample-run/gia-demo.txt](docs/sample-run/gia-demo.txt).
 Snapshot and plan ids differ per run. Audit timestamps are stored in UTC.
 
 **1. Synthetic data with seeded defects**
@@ -351,7 +407,7 @@ Sources (each fetched and checked on 2026-10-18):
 
 ```
 src/governed_agent/
-  cli.py demo.py            CLI and scripted walkthrough
+  cli.py story.py demo.py   CLI; story-mode walkthrough (rich); plain --fast walkthrough
   plan.py                   plan schema + validation of untrusted planner output
   planners/{mock,llm}.py    offline rule-based planner; OpenAI-compatible planner
   policy.py                 guardrails, risk tiers, blast radius
@@ -362,10 +418,11 @@ src/governed_agent/
   docai.py                  synthetic documents, extraction, confidence routing, reviewer queue
   pipeline.py               the governor that wires it all together
   default_policy.json       the policy (owned by risk, not by the agent)
-tests/                      40 pytest tests
+tests/                      43 pytest tests
 docs/architecture.md        architecture, production mapping (Polaris/Spark/Trino), limitations
 docs/architecture.mmd/.png  diagram source + render
-docs/demo.gif               terminal recording of `gia demo`
+docs/demo.tape              VHS script that renders docs/demo.gif and docs/demo.mp4
+docs/demo.gif / demo.mp4    recording of `gia demo --pause` (story mode)
 .github/workflows/ci.yml    CI: tests + demo smoke test on Python 3.10-3.13
 .devcontainer/              dev container used by GitHub Codespaces
 CHANGELOG.md                release history
@@ -375,7 +432,7 @@ CHANGELOG.md                release history
 
 ```bash
 pip install -e ".[dev]" && pytest
-# 40 passed in ~16 s
+# 43 passed in ~40 s
 ```
 
 They cover the guardrails (allowlist, irreversible ops, DDL/DML in SQL, PII rules, tier floor,
@@ -384,8 +441,8 @@ self-approval, roles, interactive prompt, EOF fail-closed, rejected plans leavin
 the audit log (tamper and deletion detection, event sequence, snapshot linkage, Iceberg mirror, forced re-init archiving rather than deleting evidence),
 provenance, tracing, rollback (snapshot restore, `ADD_COLUMN` and derived-table reversal, refusal
 when the table has moved, `--force`, stale base), Document AI routing end to end, the LLM planner
-against a fake endpoint (including a prompt-injected `DELETE`), and the real CLI with a piped
-approval prompt.
+against a fake endpoint (including a prompt-injected `DELETE`), the real CLI with a piped
+approval prompt, and `gia demo` in story, `--pause` and `--fast` modes.
 
 ## Limitations
 
