@@ -28,9 +28,16 @@ Iceberg tables, where every change is reviewable and reversible. All data is syn
 - **Document AI** ingestion with per-field confidence routing and a reviewer queue.
 - `gia` CLI (`init`, `profile`, `propose`, `run`, `rollback`, `audit`, `trace`, `history`,
   `docai`, `review`, `demo`) and a scripted end-to-end `gia demo`.
-- 40 pytest tests; architecture write-up and diagram; captured sample runs.
-- GitHub Actions CI on Python 3.10 to 3.13 (tests plus an offline `gia demo` smoke test).
-- README "Try it in 5 minutes" quickstart, a terminal demo GIF, and a dev container for
-  one-click GitHub Codespaces.
+- `gia demo` story mode (the default), built with `rich`: 8 chapters (data and seeded issues,
+  agent proposal, guardrails, branch dry run and evals, approval gate, Document AI routing,
+  evidence trail, rollback), each with a title, a one-line "why it matters for a bank" callout,
+  tables and pass/fail chips, then a scorecard. `--pause` waits for Enter at each chapter for
+  live presenting; `--fast` prints the plain log (used by CI).
+- 43 pytest tests; architecture write-up and diagram; captured sample runs.
+- GitHub Actions CI on Python 3.10 to 3.13 (tests plus offline smoke tests of `gia demo --fast`
+  and story mode).
+- README "Try it in 5 minutes" quickstart and a dev container for one-click GitHub Codespaces.
+- A 92-second README demo (`docs/demo.gif`, plus `docs/demo.mp4`) of `gia demo --pause`,
+  rendered with VHS from `docs/demo.tape`.
 
 [0.1.0]: https://github.com/kushagrasoni/governed-iceberg-agent/releases/tag/v0.1.0
