@@ -30,8 +30,8 @@ ELEVATED = "mrm.officer.priya"
 CHAPTERS = [
     ("Data and seeded issues", "Bank data is never clean. Here the defects are planted on purpose, so we can check the agent's work."),
     ("The agent proposes", "The agent can only suggest. A plan is a document a reviewer can read, not an action already taken."),
-    ("Guardrails block risky plans", "Rules the bank already has (no raw PII, nothing irreversible, limited blast radius) are enforced in code."),
-    ("Branch dry-run and evals", "Every change is rehearsed on an isolated Iceberg branch and tested on what was really written, before approval."),
+    ("Guardrails block risky plans", "Bank policy (no raw PII, nothing irreversible, limited blast radius) is enforced in code, not left to the prompt."),
+    ("Branch dry-run and evals", "Every change is rehearsed on an Iceberg branch or staging table and tested on what was really written, before approval."),
     ("Human approval gate", "A named, accountable person signs off. Regulated tables always need one; high-risk changes need a senior role."),
     ("Document AI confidence routing", "Fields the extractor is unsure about go to a person, not straight into the loan book."),
     ("Evidence trail", "When an examiner asks who changed this, why, and on what basis, the answer is a lookup, not an investigation."),
@@ -167,7 +167,8 @@ class Story:
             Text("the evidence trail for agentic pipelines", style="bold", justify="center"),
             Text(""),
             Text("An LLM agent proposes changes to Apache Iceberg tables. Guardrails, evals on a branch "
-                 "and a named human decide. Every step is recorded, and every change can be undone.", justify="center"),
+                 "and an approval gate decide; regulated tables always need a named human. "
+                 "Every step is recorded, and every change can be undone.", justify="center"),
             Text(""),
             Text("offline · synthetic data · 8 short chapters", style="grey62", justify="center"),
         )
@@ -281,7 +282,7 @@ class Story:
                       Text(headline, style="green" if head and head["passed"] else "red"))
         self.header()
         self.c.print(t)
-        self.c.print("  Write-Audit-Publish: nothing reaches main until its evals pass and a person approves; each published change is tagged approved-<plan_id>.")
+        self.c.print("  Write-Audit-Publish: nothing reaches main until its evals pass and the approval gate says yes; each published change is tagged approved-<plan_id>.")
         self.end_chapter(3)
 
     def ch5_approval(self) -> None:

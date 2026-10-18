@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
+from pathlib import Path
 
 from . import docai
 from .cli import _print_outcome
@@ -13,6 +15,14 @@ from .profiler import profile
 
 REVIEWER = "reviewer.alex"      # synthetic names
 ELEVATED = "mrm.officer.priya"
+
+
+def rel(path) -> str:
+    """Show paths under the working directory as ./..., so captured logs don't leak a home directory."""
+    try:
+        return "./" + str(Path(path).resolve().relative_to(Path.cwd().resolve()))
+    except ValueError:
+        return str(path)
 
 
 def h(title: str) -> None:
@@ -96,9 +106,9 @@ def main(args) -> None:
     ok, msg = g.audit.verify()
     recs = g.audit.records()
     spans = g.tracer.read()
-    print(f"  audit log  : {settings.audit_path} -> {msg}")
+    print(f"  audit log  : {rel(settings.audit_path)} -> {msg}")
     print(f"  audit table: governance.agent_audit rows = {read(g.catalog.load_table('governance.agent_audit')).num_rows}")
-    print(f"  traces     : {g.tracer.path} -> {len(spans)} spans in {len({s['trace_id'] for s in spans})} traces")
-    print(f"  provenance : {settings.home / 'provenance'} ({len(list((settings.home / 'provenance').glob('*.json')))} prompt records)")
-    print(f"  events     : {dict(sorted(__import__('collections').Counter(r['event_type'] for r in recs).items()))}")
+    print(f"  traces     : {rel(g.tracer.path)} -> {len(spans)} spans in {len({s['trace_id'] for s in spans})} traces")
+    print(f"  provenance : {rel(settings.home / 'provenance')} ({len(list((settings.home / 'provenance').glob('*.json')))} prompt records)")
+    print(f"  events     : {dict(sorted(Counter(r['event_type'] for r in recs).items()))}")
     print(f"  currency fix trace: gia trace {fix.trace_id}")

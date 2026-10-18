@@ -68,29 +68,41 @@ Every arrow above is a trace span. Every box writes an audit record.
 * **Catalog: Apache Polaris (Iceberg REST).** Replace the SQLite `SqlCatalog` with a REST catalog
   (`GIA_CATALOG_NAME` loads one from `~/.pyiceberg.yaml`; this hook is not tested here). Polaris
   uses role-based access control: privileges are granted to catalog roles, and catalog roles are
-  assigned to principal roles. Data access goes through short-lived storage credentials tied to
-  privileges such as `TABLE_WRITE_DATA`
-  ([Polaris access control](https://polaris.apache.org/in-dev/unreleased/managing-security/access-control/)).
-  Those privileges are scoped to the table, not the branch, as far as I verified. So the agent's
-  principal should get read on source namespaces and write only on a staging namespace. A
-  separate, human-triggered publisher principal holds write on regulated tables and does the
-  branch fast-forward and rollback.
+  assigned to principal roles. `TABLE_WRITE_DATA` is what hands a client short-lived read+write
+  storage credentials for a table
+  ([Polaris 1.8.0 access control](https://polaris.apache.org/releases/1.8.0/managing-security/access-control/)).
+  The securable objects are catalog, namespace, table, view and policy. There is no branch-level
+  privilege, so a principal that can write to an audit branch can also write to `main`. The
+  agent's principal should therefore get read on source namespaces and write only on a staging
+  namespace. A separate, human-triggered publisher principal holds write on regulated tables and
+  does the branch fast-forward and rollback.
 * **Compute: Spark for writes, Trino for reads/evals.** The plan's `SELECT` becomes Spark SQL. Iceberg's
-  Write-Audit-Publish in Spark writes to a branch via `spark.wap.branch`, and publishing is
-  `CALL system.fast_forward('db.tbl', 'main', 'wap_<plan>')` (see the Iceberg Spark procedures docs).
-  Rollback is `CALL system.rollback_to_snapshot(...)` / `set_current_snapshot(...)`. Trino can run
-  the eval queries against the branch or snapshot (`FOR VERSION AS OF`) so eval compute stays
-  separate from write compute.
-* **Policy** moves from a JSON file to a policy service (e.g. OPA) owned by risk and controls, with
-  change control on the policy itself. Its version hash is already stamped into every provenance
+  Write-Audit-Publish in Spark writes to a branch when the table has `write.wap.enabled=true` and
+  the session sets `spark.wap.branch`. Publishing is
+  `CALL catalog.system.fast_forward('db.tbl', 'main', 'wap_<plan>')`
+  ([branching docs](https://iceberg.apache.org/docs/latest/branching/#audit-branch),
+  [Spark procedures](https://iceberg.apache.org/docs/latest/spark-procedures/)). Rollback is
+  `CALL catalog.system.rollback_to_snapshot(...)`, which needs the target to be an ancestor of the
+  current snapshot, or `set_current_snapshot(...)`, which does not. Trino can run
+  the eval queries against the branch or snapshot (`FOR VERSION AS OF 'wap_<plan>'` or a snapshot
+  id, per the [Trino Iceberg connector docs](https://trino.io/docs/current/connector/iceberg.html))
+  so eval compute stays separate from write compute.
+* **Policy** moves from a JSON file to a policy service (e.g. OPA, which Polaris can also call as
+  an external policy decision point) owned by risk and controls, with
+  change control on the policy itself. Its `policy_version` is already stamped into every provenance
   record.
 * **Approvals** come from the change-management or ticketing system with SSO identity, not a CLI
   string. Maker-checker happens there. HIGH routes to a model-risk / data-governance approver group.
 * **Audit** goes to WORM / immutable storage or the SIEM. The hash chain becomes defense in depth,
   not the primary control. The Iceberg audit table should be compacted, because every event is a
   commit in the demo.
-* **Traces** go through the OpenTelemetry SDK to the bank's collector (field names already
-  match). LLM spans should follow the OTel GenAI semantic conventions.
+* **Traces** go through the OpenTelemetry SDK to the bank's collector (the span records already
+  use OTLP field names: `trace_id`, `span_id`, `parent_span_id`, `start_time_unix_nano`,
+  `end_time_unix_nano`). LLM spans should follow the
+  [OpenTelemetry GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions-genai),
+  which now live in their own repository and are still at *Development* status, so expect
+  attribute names to change. The demo's planner span sets only `gen_ai.request.model` and
+  `gen_ai.response.id`.
 * **Provenance** feeds the bank's AI/model inventory: one inventory entry for the agent (model,
   version, prompt template hash, tools), linked to per-action records.
 * **Snapshot retention.** Rollback is only as long as snapshot retention. `expire_snapshots` must
