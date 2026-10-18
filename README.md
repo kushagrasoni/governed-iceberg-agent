@@ -1,5 +1,7 @@
 # governed-iceberg-agent
 
+[![CI](https://github.com/kushagrasoni/governed-iceberg-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/kushagrasoni/governed-iceberg-agent/actions/workflows/ci.yml)
+
 **The evidence trail for agentic pipelines.** This is a small, working demo of an LLM agent that
 *proposes* changes to Apache Iceberg tables (fix a data-quality issue, add a column, build a
 derived table, ingest extracted documents). It never gets to *just do* them. Each proposal is a
@@ -38,16 +40,10 @@ It borrows the long-standing model-risk *principles* (effective challenge, valid
 documentation) and pairs them with NIST AI RMF 1.0 and the NIST Generative AI Profile
 (NIST AI 600-1). It does **not** claim compliance with anything.
 
-## Quick start
+## Commands
 
-```bash
-python3 -m venv .venv && . .venv/bin/activate
-pip install .            # or: pip install -e ".[dev]" for tests
-gia demo                 # end-to-end walkthrough, offline, ~10 s
-```
-
-State goes to `./.lakehouse/` (override with `--home` or `GIA_HOME`). Tested with Python 3.13,
-PyIceberg 0.12.0, DuckDB 1.5, on Linux.
+State goes to `./.lakehouse/` (override with `--home` or `GIA_HOME`). CI runs the tests and the
+demo on Python 3.10, 3.11, 3.12 and 3.13 (Linux). Developed with PyIceberg 0.12.0 and DuckDB 1.5.
 
 Individual commands:
 
