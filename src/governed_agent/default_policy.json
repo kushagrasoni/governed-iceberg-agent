@@ -1,0 +1,140 @@
+{
+  "policy_version": "2026.10-demo",
+  "description": "Guardrail policy for the governed Iceberg agent. Owned by the (simulated) risk function, not by the agent. Any write to a regulated table requires a named human approver, regardless of risk tier.",
+  "allowed_operations": [
+    "ADD_COLUMN",
+    "CREATE_DERIVED_TABLE",
+    "FIX_DATA_QUALITY",
+    "DEDUPLICATE",
+    "DELETE_ROWS",
+    "APPEND_RECORDS"
+  ],
+  "elevated_operations": [
+    "DELETE_ROWS"
+  ],
+  "irreversible_operations": [
+    "DROP_TABLE",
+    "DROP_COLUMN",
+    "TRUNCATE",
+    "EXPIRE_SNAPSHOTS",
+    "REWRITE_SCHEMA_TYPE"
+  ],
+  "base_risk_tier": {
+    "ADD_COLUMN": "LOW",
+    "CREATE_DERIVED_TABLE": "LOW",
+    "FIX_DATA_QUALITY": "MEDIUM",
+    "DEDUPLICATE": "MEDIUM",
+    "DELETE_ROWS": "HIGH",
+    "APPEND_RECORDS": "MEDIUM"
+  },
+  "writable_namespaces": [
+    "bank",
+    "analytics"
+  ],
+  "pii_columns": {
+    "bank.transactions": [
+      "customer_name",
+      "customer_email",
+      "ssn"
+    ],
+    "bank.loan_applications": [
+      "applicant_name",
+      "ssn"
+    ]
+  },
+  "pii_name_patterns": [
+    "ssn",
+    "email",
+    "phone",
+    "dob",
+    "birth",
+    "name",
+    "address",
+    "tax_id"
+  ],
+  "pii_masking_functions": [
+    "sha256",
+    "md5"
+  ],
+  "blast_radius": {
+    "escalate_to_high_pct": 10.0,
+    "hard_limit_pct": 25.0,
+    "max_rows_removed_pct": 5.0,
+    "max_append_rows": 1000
+  },
+  "approval": {
+    "LOW": {
+      "auto_approve_allowed": true,
+      "required_role": "standard"
+    },
+    "MEDIUM": {
+      "auto_approve_allowed": false,
+      "required_role": "standard"
+    },
+    "HIGH": {
+      "auto_approve_allowed": false,
+      "required_role": "elevated"
+    }
+  },
+  "forbidden_approvers": [
+    "agent",
+    "mock-planner",
+    "llm-planner",
+    "auto-policy"
+  ],
+  "dq_assertions": {
+    "bank.transactions": {
+      "not_null": [
+        "txn_id",
+        "account_id",
+        "txn_ts",
+        "amount"
+      ],
+      "unique_key": "txn_id",
+      "accepted_values": {
+        "currency": [
+          "USD",
+          "EUR",
+          "GBP",
+          "INR",
+          "CAD"
+        ]
+      },
+      "no_regression_metrics": [
+        "null_txn_id",
+        "duplicate_txn_id",
+        "noncanonical_currency",
+        "null_merchant_category",
+        "negative_purchase_amount",
+        "future_dated"
+      ]
+    },
+    "bank.loan_applications": {
+      "not_null": [
+        "application_id",
+        "applicant_name",
+        "ssn",
+        "annual_income",
+        "loan_amount",
+        "application_date"
+      ]
+    }
+  },
+  "regulated_tables": [
+    "bank.transactions",
+    "bank.loan_applications"
+  ],
+  "regulated_namespaces": [
+    "bank"
+  ],
+  "docai": {
+    "confidence_threshold": 0.9,
+    "target_table": "bank.loan_applications",
+    "required_provenance_columns": [
+      "source_doc",
+      "source_sha256",
+      "extractor",
+      "min_confidence"
+    ]
+  }
+}
