@@ -1,0 +1,41 @@
+%%{init: {"theme": "base", "securityLevel": "loose", "fontFamily": "Inter, Arial, sans-serif", "flowchart": {"curve": "linear", "nodeSpacing": 40, "rankSpacing": 38, "padding": 18, "htmlLabels": true}, "themeVariables": {"fontFamily": "Inter, Arial, sans-serif", "fontSize": "18px", "background": "#0A1020", "primaryColor": "#131C33", "primaryTextColor": "#F1F5F9", "lineColor": "#64748B", "clusterBkg": "#0B1326", "clusterBorder": "#334155", "edgeLabelBackground": "#0A1020"}, "themeCSS": ".nodeLabel, .edgeLabel { white-space: nowrap !important; } .ev { color:#C4B5FD; font-size:15px; } .mod { color:#64748B; font-size:14px; } .edgeLabel { color:#94A3B8 !important; font-size:15px; }"}}%%
+flowchart TB
+    S1["<b>01 · Documents &amp; source tables</b><br/>synthetic loan applications · bank.transactions<br/><span style='color:#C4B5FD'>evidence: source + file hash</span><br/><span style='color:#7C8BA1;font-size:14px'>datagen.py · docai.generate_documents</span>"]
+    S2["<b>02 · Document AI</b><br/>extract · classify · confidence score per field<br/><span style='color:#C4B5FD'>evidence: confidence per field</span><br/><span style='color:#7C8BA1;font-size:14px'>docai.extract · docai.route</span>"]
+    RQ["<b>Reviewer queue</b><br/>fields below 0.90 confidence<br/>resolved by a named reviewer<br/><span style='color:#7C8BA1;font-size:14px'>gia review resolve</span>"]
+    S3["<b>03 · Agentic pipeline</b><br/>LLM plans · tools act (PySpark, Trino in prod; DuckDB + PyIceberg here)<br/><span style='color:#C4B5FD'>evidence: prompt · model ver · tool calls (OTel-style spans)</span><br/><span style='color:#7C8BA1;font-size:14px'>planners/ · plan.py · tracing.py</span>"]
+    G["<b>Guardrails + pre-execution evals</b><br/>allowlist · no DROP · DELETE needs elevated · PII rules · blast radius<br/>dry run on Iceberg branch wap_&lt;plan&gt; · schema compat · DQ no-regression<br/><span style='color:#7C8BA1;font-size:14px'>policy.py · executor.dry_run · evals.py</span>"]
+    S4["<b>04 · Human approval gate</b><br/>Agents propose. Humans approve.<br/><span style='color:#C4B5FD'>evidence: approver · role · timestamp · decision</span><br/><span style='color:#7C8BA1;font-size:14px'>approval.py</span>"]
+    S5["<b>05 · Iceberg lakehouse (on-prem)</b><br/>publish = main → evaluated snapshot · tag approved-&lt;plan&gt;<br/><span style='color:#C4B5FD'>evidence: snapshot id · lineage · rollback pointer</span><br/><span style='color:#7C8BA1;font-size:14px'>executor.publish · gia rollback</span>"]
+    X(["blocked or rejected<br/>branch discarded · main untouched"])
+    AUD[("<b>Hash-chained audit log</b><br/>audit.jsonl + Iceberg governance.agent_audit<br/>Lineage · Provenance · Traces · Approvals")]
+
+    S1 --> S2
+    S2 -- "all fields ≥ 0.90" --> S3
+    S2 -. "any field < 0.90" .-> RQ
+    RQ -. "resolved" .-> S3
+    S3 -- "JSON plan" --> G
+    G -- "pass" --> S4
+    G -. "deny / fail" .-> X
+    S4 -. "reject / no answer" .-> X
+    S4 -- "approve" --> S5
+    S5 -- "evidence from every step" --> AUD
+
+    classDef src fill:#131C33,stroke:#60A5FA,stroke-width:2.5px,color:#F1F5F9;
+    classDef docai fill:#131C33,stroke:#38BDF8,stroke-width:2.5px,color:#F1F5F9;
+    classDef agent fill:#131C33,stroke:#A78BFA,stroke-width:2.5px,color:#F1F5F9;
+    classDef gate fill:#1F1A0E,stroke:#FBBF24,stroke-width:2.5px,color:#F1F5F9;
+    classDef lake fill:#0F2A2A,stroke:#2DD4BF,stroke-width:2.5px,color:#F1F5F9;
+    classDef guard fill:#1A1530,stroke:#C4B5FD,stroke-width:2px,color:#E9D5FF;
+    classDef rq fill:#0F1F2E,stroke:#38BDF8,stroke-width:2px,stroke-dasharray:5 4,color:#BAE6FD;
+    classDef stop fill:#2A1215,stroke:#F87171,stroke-width:2px,color:#FECACA;
+    classDef aud fill:#120F24,stroke:#A78BFA,stroke-width:2.5px,color:#F1F5F9;
+    class S1 src
+    class S2 docai
+    class S3 agent
+    class S4 gate
+    class S5 lake
+    class G guard
+    class RQ rq
+    class X stop
+    class AUD aud
