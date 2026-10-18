@@ -455,20 +455,23 @@ Sources (each fetched and checked on 2026-10-18):
   [letter](https://www.federalreserve.gov/supervisionreg/srletters/sr2602.htm) ·
   [PDF incl. guidance](https://www.federalreserve.gov/supervisionreg/srletters/SR2602.pdf) ·
   [guidance attachment](https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf)
-* OCC, **Bulletin 2026-13**, *Model Risk Management: Revised Guidance* (Apr 17, 2026), which rescinds OCC Bulletin 2011-12:
+* OCC, **Bulletin 2026-13**, *Model Risk Management: Revised Guidance* (Apr 17, 2026), which rescinds OCC Bulletins 2011-12 and 2021-19:
   <https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html>
 * FDIC press release, *Agencies Issue Revised Model Risk Guidance* (Apr 17, 2026):
   <https://www.fdic.gov/news/press-releases/2026/agencies-issue-revised-model-risk-guidance>
 * Federal Reserve, **SR 11-7** (Apr 4, 2011, superseded): [letter PDF](https://www.federalreserve.gov/boarddocs/srletters/2011/sr1107.pdf) ·
   [guidance attachment](https://www.federalreserve.gov/boarddocs/srletters/2011/sr1107a1.pdf)
-* NIST, **AI RMF 1.0** (NIST AI 100-1, Jan 2023): <https://doi.org/10.6028/NIST.AI.100-1> ·
+* NIST, **AI RMF 1.0** (NIST AI 100-1, Jan 2023, doi:10.6028/NIST.AI.100-1):
+  [PDF](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf) ·
   [overview page](https://www.nist.gov/itl/ai-risk-management-framework). NIST notes the AI RMF 1.0
   "is being revised as part of the White House AI Action Plan".
 * NIST, **AI 600-1**, *Generative AI Profile* (Jul 2024): <https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf>
 * Apache Iceberg [branching and tagging](https://iceberg.apache.org/docs/latest/branching/) ·
   [Spark procedures](https://iceberg.apache.org/docs/latest/spark-procedures/) ·
-  [PyIceberg API](https://py.iceberg.apache.org/api/) · [Apache Polaris](https://polaris.apache.org/) ·
-  [Trino Iceberg connector](https://trino.io/docs/current/connector/iceberg.html)
+  [PyIceberg API](https://py.iceberg.apache.org/api/) · [Apache Polaris](https://polaris.apache.org/)
+  ([1.8.0 access control](https://polaris.apache.org/releases/1.8.0/managing-security/access-control/)) ·
+  [Trino Iceberg connector](https://trino.io/docs/current/connector/iceberg.html) ·
+  [OpenTelemetry GenAI semantic conventions](https://github.com/open-telemetry/semantic-conventions-genai) (Development status)
 
 ## Repository layout
 
