@@ -194,7 +194,9 @@ class Governor:
             out.risk_tier = br.risk_tier
             if not br.allowed:
                 self.executor.discard(dr)
-                out.status, out.detail = "BLOCKED_BY_POLICY", "; ".join(c.detail for c in br.checks if not c.passed)
+                out.status = "BLOCKED_BY_POLICY"
+                out.detail = "; ".join([c.detail for c in br.checks if not c.passed] +
+                                       [f"{c.name}: {c.detail}" for c in ev.checks if not c.passed])
                 self.audit.append("BLOCKED", plan.plan_id, "policy-engine", {"stage": "blast_radius", "reason": out.detail}, tid)
                 return out
             if not ev.passed:

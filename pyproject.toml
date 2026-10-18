@@ -32,3 +32,4 @@ governed_agent = ["default_policy.json"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = ["ignore:Delete operation did not match any records:UserWarning"]
