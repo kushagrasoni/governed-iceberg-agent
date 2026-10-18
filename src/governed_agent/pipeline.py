@@ -73,11 +73,26 @@ class Governor:
         row["payload_json"] = json.dumps(rec["payload"], default=str)
         self.catalog.load_table(AUDIT_TABLE).append(pa.Table.from_pylist([row], schema=AUDIT_SCHEMA))
 
+    def _archive_evidence(self) -> None:
+        """A forced re-init never deletes evidence: prior logs/queues move to archive/<utc-ts>/."""
+        home = self.settings.home
+        items = [p for p in (self.settings.audit_path, self.tracer.path, self.queue.path,
+                             home / "provenance", self.settings.plans_dir, home / "docai" / "batches", home / "docs_in")
+                 if p.exists() and (p.is_file() and p.stat().st_size > 0 or p.is_dir() and any(p.iterdir()))]
+        if not items:
+            return
+        dest = home / "archive" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        dest.mkdir(parents=True, exist_ok=True)
+        for p in items:
+            p.rename(dest / str(p.relative_to(home)).replace("/", "__"))
+        self.settings.ensure()
+
     def init(self, rows: int = 5000, seed: int = 42, force: bool = False) -> dict:
         with self.tracer.span("gia.init", rows=rows, seed=seed):
             ensure_namespace(self.catalog, "governance")
             ensure_namespace(self.catalog, "analytics")
             if force:
+                self._archive_evidence()
                 for t in (AUDIT_TABLE, LOANS, "analytics.daily_merchant_summary"):
                     if table_exists(self.catalog, t):
                         self.catalog.purge_table(t)

@@ -65,3 +65,13 @@ def test_every_step_is_traced(gov):
             "guardrail.blast_radius", "human.approval_gate", "tool.iceberg_commit"} <= names
     root = [s for s in spans if s["parent_span_id"] is None][0]
     assert all(s["parent_span_id"] == root["span_id"] for s in spans if s is not root)
+
+
+def test_forced_reinit_archives_instead_of_deleting(gov):
+    approve(gov, plan_for(gov, "standardize currency"))
+    n = len(gov.audit.records())
+    gov.init(rows=800, seed=3, force=True)
+    archived = list((gov.settings.home / "archive").glob("*/audit__audit.jsonl"))
+    assert archived and len(archived[0].read_text().splitlines()) == n
+    assert len(gov.audit.records()) == 1 and gov.audit.verify()[0]
+    assert read(gov.catalog.load_table("governance.agent_audit")).num_rows == 1
