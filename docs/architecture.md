@@ -67,10 +67,14 @@ Every arrow above is a trace span. Every box writes an audit record.
 
 * **Catalog: Apache Polaris (Iceberg REST).** Replace the SQLite `SqlCatalog` with a REST catalog
   (`GIA_CATALOG_NAME` loads one from `~/.pyiceberg.yaml`; this hook is not tested here). Polaris
-  RBAC then enforces at the catalog what this demo enforces in Python. The agent's principal gets
-  read on source namespaces and write **only on `wap_*` branches and staging namespaces**. Publish
-  (moving main) and rollback are separate, human-held privileges. Credential vending keeps storage
-  keys away from the agent.
+  uses role-based access control: privileges are granted to catalog roles, and catalog roles are
+  assigned to principal roles. Data access goes through short-lived storage credentials tied to
+  privileges such as `TABLE_WRITE_DATA`
+  ([Polaris access control](https://polaris.apache.org/in-dev/unreleased/managing-security/access-control/)).
+  Those privileges are scoped to the table, not the branch, as far as I verified. So the agent's
+  principal should get read on source namespaces and write only on a staging namespace. A
+  separate, human-triggered publisher principal holds write on regulated tables and does the
+  branch fast-forward and rollback.
 * **Compute: Spark for writes, Trino for reads/evals.** The plan's `SELECT` becomes Spark SQL. Iceberg's
   Write-Audit-Publish in Spark writes to a branch via `spark.wap.branch`, and publishing is
   `CALL system.fast_forward('db.tbl', 'main', 'wap_<plan>')` (see the Iceberg Spark procedures docs).
