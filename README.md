@@ -365,6 +365,10 @@ src/governed_agent/
 tests/                      40 pytest tests
 docs/architecture.md        architecture, production mapping (Polaris/Spark/Trino), limitations
 docs/architecture.mmd/.png  diagram source + render
+docs/demo.gif               terminal recording of `gia demo`
+.github/workflows/ci.yml    CI: tests + demo smoke test on Python 3.10-3.13
+.devcontainer/              dev container used by GitHub Codespaces
+CHANGELOG.md                release history
 ```
 
 ## Tests
