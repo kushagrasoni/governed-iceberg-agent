@@ -8,6 +8,10 @@
 Iceberg tables. It never gets to just make them, and every step it takes leaves a record you can
 hand to an auditor.
 
+[![The live app on Hugging Face: a numbered stepper (load data, agent proposes, you approve, audit and roll back), the bank ledger with planted problems, and a what-just-happened panel](docs/app-blueprint.png)](https://huggingface.co/spaces/kushagrasoni/governed-iceberg-agent)
+
+*The [live app](https://huggingface.co/spaces/kushagrasoni/governed-iceberg-agent) walks you through it in four steps: load data, agent proposes, you approve, audit & roll back. Document AI and the architecture diagram are under **More**.*
+
 ![gia demo story mode: 8 chapters from seeded data issues to rollback, ending in a scorecard](docs/demo.gif)
 
 *A real `gia demo --pause` run, recorded with [VHS](https://github.com/charmbracelet/vhs) from

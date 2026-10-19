@@ -6,7 +6,7 @@ production bank lakehouse built on Apache Polaris, Spark and Trino.
 ![architecture](architecture.png)
 
 Diagram source: [architecture.mmd](architecture.mmd). To re-render:
-`npx -p @mermaid-js/mermaid-cli mmdc -i docs/architecture.mmd -o docs/architecture.png -p docs/puppeteer.json -b "#0A1020" -s 2`
+`npx -p @mermaid-js/mermaid-cli mmdc -i docs/architecture.mmd -o docs/architecture.png -p docs/puppeteer.json -b "#0F172A" -s 2`
 (`puppeteer.json` points at a local Chrome).
 
 ## 1. Components
