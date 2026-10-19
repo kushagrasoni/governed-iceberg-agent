@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/kushagrasoni/governed-iceberg-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/kushagrasoni/governed-iceberg-agent/actions/workflows/ci.yml)
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/kushagrasoni/governed-iceberg-agent)
+[![Try it live on Hugging Face](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm.svg)](https://huggingface.co/spaces/kushagrasoni/governed-iceberg-agent)
 
 **The evidence trail for agentic pipelines.** An LLM agent may *propose* changes to Apache
 Iceberg tables. It never gets to just make them, and every step it takes leaves a record you can
