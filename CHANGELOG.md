@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- README visuals in the Blueprint v2.0 house style (palette C2, colour shows who acts, status
+  colours only with an icon and a word): animated `docs/architecture.gif` with a still
+  `docs/architecture.png`, a re-recorded `docs/demo.gif` / `docs/demo.mp4`, and a fresh
+  `docs/app-blueprint.png` of the live app.
+- `gia demo` story mode uses the same palette: actor colours for data, AI and approvals, and
+  check chips that pair a colour with ✓ / ✕ / !.
+- Visible wording says "generated" / "made up" instead of "synthetic".
+
 ## [0.1.0] - 2026-10-18
 
 First public release. A working, offline demo of an LLM agent that proposes changes to Apache

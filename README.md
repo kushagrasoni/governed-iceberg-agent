@@ -117,7 +117,12 @@ finish, then run `gia demo` in the terminal.
 
 ## How the pieces fit
 
-![Architecture: documents and source tables flow through Document AI (low-confidence fields go to a reviewer queue) into the agentic pipeline, which emits a JSON plan; guardrails and evals run a dry run on an Iceberg branch; a human approval gate decides; approved plans are published to the Iceberg lakehouse with a tag and rollback pointer, rejected ones are discarded; every step writes to the hash-chained audit log](docs/architecture.png)
+<picture>
+  <source media="(prefers-reduced-motion: no-preference)" srcset="docs/architecture.gif">
+  <img src="docs/architecture.png" alt="Architecture, animated: sources and loan documents go to Document AI (unsure fields go to a reviewer queue that a person fixes), the AI agent plans the fix as JSON + SQL, rule checks run a trial on an Iceberg branch, a named person approves or rejects, and publish moves main to the tested copy; denied or rejected changes are blocked and the branch thrown away; every step writes to the hash-chained audit log" width="100%">
+</picture>
+
+*The animated diagram falls back to a still ([docs/architecture.png](docs/architecture.png)) if your system asks for reduced motion. Colour shows who acts (data, AI, a person, the platform); red, amber and green appear only as status, always with an icon and a word.*
 
 More detail, including how this maps to Polaris, Spark and Trino in production, is in
 [docs/architecture.md](docs/architecture.md).
@@ -495,7 +500,8 @@ src/governed_agent/
   default_policy.json       the policy (owned by risk, not by the agent)
 tests/                      43 pytest tests
 docs/architecture.md        architecture, production mapping (Polaris/Spark/Trino), limitations
-docs/architecture.mmd/.png  diagram source + render
+docs/architecture.gif/.png  architecture diagram (animated + still)
+docs/architecture.mmd       Mermaid outline of the same flow
 docs/demo.tape              VHS script that renders docs/demo.gif and docs/demo.mp4
 docs/demo.gif / demo.mp4    recording of `gia demo --pause` (story mode)
 .github/workflows/ci.yml    CI: tests + demo smoke test on Python 3.10-3.13

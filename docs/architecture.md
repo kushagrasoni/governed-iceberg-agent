@@ -3,10 +3,13 @@
 This demo uses generated, made-up data and runs on a laptop. Section 4 describes what changes in a
 production bank lakehouse built on Apache Polaris, Spark and Trino.
 
-![architecture](architecture.png)
+<picture>
+  <source media="(prefers-reduced-motion: no-preference)" srcset="architecture.gif">
+  <img src="architecture.png" alt="Architecture: sources, Document AI with a reviewer queue, the AI agent, rule checks on a branch, a named person's approval, publish, and the hash-chained audit log that every step writes to" width="100%">
+</picture>
 
-Diagram source: [architecture.mmd](architecture.mmd). To re-render:
-`npx -p @mermaid-js/mermaid-cli mmdc -i docs/architecture.mmd -o docs/architecture.png -p docs/puppeteer.json -b "#0F172A" -s 2`
+The diagram is drawn in the Blueprint v2.0 (palette C2) house style: colour shows who acts, and status colours appear only with an icon and a word. [architecture.gif](architecture.gif) is the animated version and [architecture.png](architecture.png) the still. A Mermaid outline of the same flow is in [architecture.mmd](architecture.mmd); to render it:
+`npx -p @mermaid-js/mermaid-cli mmdc -i docs/architecture.mmd -o /tmp/architecture-mermaid.png -p docs/puppeteer.json -b "#0F172A" -s 2`
 (`puppeteer.json` points at a local Chrome).
 
 ## 1. Components
