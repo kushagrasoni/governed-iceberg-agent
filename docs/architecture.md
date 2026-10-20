@@ -1,6 +1,6 @@
 # Architecture: the evidence trail for agentic pipelines
 
-This demo uses synthetic data and runs on a laptop. Section 4 describes what changes in a
+This demo uses generated, made-up data and runs on a laptop. Section 4 describes what changes in a
 production bank lakehouse built on Apache Polaris, Spark and Trino.
 
 ![architecture](architecture.png)
@@ -13,7 +13,7 @@ Diagram source: [architecture.mmd](architecture.mmd). To re-render:
 
 | # | Component | Module | Evidence it leaves |
 |---|---|---|---|
-| 01 | **Documents & source tables**: synthetic loan applications (text "scans") and `bank.transactions` with seeded defects | `datagen.py`, `docai.generate_documents` | source + file SHA-256; table snapshot id + uuid |
+| 01 | **Documents & source tables**: generated loan applications (text "scans") and `bank.transactions` with seeded defects | `datagen.py`, `docai.generate_documents` | source + file SHA-256; table snapshot id + uuid |
 | 02 | **Document AI**: extract fields, confidence score per field, route below-threshold fields to a reviewer queue | `docai.py` | per-field confidence; `review_queue.jsonl` (QUEUED / RESOLVED with reviewer) |
 | 03 | **Agentic pipeline**: a planner (OpenAI-compatible LLM or offline mock) emits structured JSON plans; tools act (profile, dry run, eval, commit) | `planners/`, `plan.py`, `pipeline.py` | provenance record: model, version, prompt and response hashes plus full text, inputs; trace spans for every tool call |
 | – | **Guardrails + pre-execution evals**: static policy, sandboxed transform, Iceberg branch or staging write, evals, blast-radius gate | `policy.py`, `lakehouse.py`, `executor.dry_run`, `evals.py` | `POLICY_EVALUATED` ×2, `DRY_RUN_COMPLETED`, `EVAL_COMPLETED` with every check |
@@ -120,7 +120,7 @@ Every arrow above is a trace span. Every box writes an audit record.
 * PII detection uses column names, masking-function syntax and SSN/email regexes. The paren-walk
   SQL check is a heuristic, not a SQL parser. Use a real parser (e.g. sqlglot) and a data
   classification service in production.
-* The DQ metrics are hand-written for the synthetic transactions table. Other tables get only
+* The DQ metrics are hand-written for the generated transactions table. Other tables get only
   schema, not-null and diff checks.
 * The DuckDB transform reads the whole table into memory. This is fine for a demo and not for
   multi-TB tables, where the Spark path applies.
@@ -131,7 +131,7 @@ Every arrow above is a trace span. Every box writes an audit record.
   expiry. This is useful as evidence but adds metadata growth.
 * The LLM planner has only been tested against a local fake endpoint in this build. Real model
   behavior (quality of plans, refusal, prompt injection via data) has not been evaluated.
-* The Document AI extractor is a regex over clean synthetic text, so its confidences are
+* The Document AI extractor is a regex over clean generated text, so its confidences are
   heuristic, not calibrated.
 * The docker-compose path (MinIO + REST catalog + Spark/Trino) is **not** included. Docker was not
   available in the build environment, and shipping an untested compose file seemed worse than

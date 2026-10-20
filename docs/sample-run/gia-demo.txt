@@ -1,5 +1,5 @@
 
-=== 1. Init local Iceberg lakehouse (SQLite catalog + local files, synthetic data) 
+=== 1. Init local Iceberg lakehouse (SQLite catalog + local files, generated data) 
   seeded bank.transactions: 5000 rows, snapshot 8746992293146341987
   seeded defects: {'noncanonical_currency': 197, 'null_merchant_category': 147, 'negative_purchase_amount': 49, 'future_dated': 24, 'duplicate_rows': 75}
   profile: {'row_count': 5000, 'null_txn_id': 0, 'duplicate_txn_id': 75, 'noncanonical_currency': 202, 'null_merchant_category': 150, 'negative_purchase_amount': 50, 'future_dated': 24}
@@ -50,7 +50,7 @@
   [EXECUTED] p-4d8c4365de APPEND_RECORDS       tier=MEDIUM -> bank.loan_applications
              approved by reviewer.alex via demo-simulated
              snapshot 3651590677270913634 -> 752532673956218148   trace=d78c9ef507b8ab6bd3872a8a2b49848a
-  reviewer resolves the queue (simulated reviewer reads the synthetic answer key):
+  reviewer resolves the queue (simulated reviewer reads the generated answer key):
     3dc5a1c2:annual_income     annual_income     raw='$153,OOO'   conf=0.72 -> 153000.0
     f7f4e913:loan_amount       loan_amount       raw='$1?,500'    conf=0.20 -> 13500.0
     0365c1b8:application_date  application_date  raw='09/23/26'   conf=0.80 -> '2026-09-23'

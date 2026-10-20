@@ -24,7 +24,7 @@ from .lakehouse import TRANSACTIONS, read
 from .pipeline import LOANS, Governor
 from .profiler import profile
 
-REVIEWER = "reviewer.alex"      # synthetic names
+REVIEWER = "reviewer.alex"      # made-up names
 ELEVATED = "mrm.officer.priya"
 
 CHAPTERS = [
@@ -38,7 +38,11 @@ CHAPTERS = [
     ("Rollback", "Any approved change can be undone to an exact earlier snapshot, and unsafe undos are refused."),
 ]
 
-ACCENT = "cyan"
+# Blueprint v2.0 palette C2 (dark): colour says WHO acts (data / AI / person / platform);
+# red / amber / green are status only and always come with an icon and a word.
+C2 = {"hi": "#5EEAD4", "text": "#E2E8F0", "muted": "#94A3B8", "navy": "#0F172A", "data": "#BAE6FD", "ai": "#A5B4FC",
+      "person": "#D946EF", "platform": "#14B8A6", "error": "#E07A6B", "warning": "#FCD34D", "success": "#86EFAC"}
+ACCENT = C2["hi"]
 SHORT = ["Data", "Propose", "Guardrails", "Dry-run", "Approval", "Doc AI", "Evidence", "Rollback"]
 
 
@@ -49,9 +53,9 @@ def progress(idx: int) -> Text:
         if i:
             t.append(" · ", style="grey42")
         if i == idx:
-            t.append(f" {i + 1} {name} ", style=f"bold #11111b on {ACCENT}")
+            t.append(f" {i + 1} {name} ", style=f"bold {C2['navy']} on {ACCENT}")
         else:
-            t.append(f"{i + 1} {name}", style="green" if i < idx else "grey50")
+            t.append(f"{i + 1} {name}", style=C2["muted"] if i < idx else "grey50")
     return t
 
 
@@ -63,14 +67,17 @@ def where(home) -> str:
 
 
 def chip(label: str, kind: str) -> Text:
-    # explicit hex colors so chips keep their contrast under any terminal theme
-    style = {"pass": "bold #0b1a0f on #4ac26b", "fail": "bold #ffffff on #d1242f", "warn": "bold #1f1600 on #f2cc60",
-             "info": "bold #ffffff on #1f6feb", "muted": "bold #ffffff on #57606a"}[kind]
-    return Text(f" {label} ", style=style)
+    # explicit C2 hex colours so chips keep their contrast under any terminal theme.
+    # Status chips (pass / fail / warn) always carry their icon next to the word; person = needs a named person.
+    navy = C2["navy"]
+    style = {"pass": f"bold {navy} on {C2['success']}", "fail": f"bold {navy} on {C2['error']}", "warn": f"bold {navy} on {C2['warning']}",
+             "person": f"bold {navy} on {C2['person']}", "info": f"bold {navy} on {C2['muted']}", "muted": f"bold {C2['text']} on #334155"}[kind]
+    icon = {"pass": "✓ ", "fail": "✕ ", "warn": "! "}.get(kind, "")
+    return Text(f" {icon}{label} ", style=style)
 
 
 STATUS_CHIP = {"EXECUTED": ("EXECUTED", "pass"), "BLOCKED_BY_POLICY": ("BLOCKED", "fail"), "EVAL_FAILED": ("EVAL FAIL", "fail"),
-               "REJECTED": ("REFUSED", "warn"), "ERROR": ("ERROR", "fail")}
+               "REJECTED": ("REFUSED", "fail"), "ERROR": ("ERROR", "fail")}
 
 
 def status_chip(status: str) -> Text:
@@ -140,7 +147,7 @@ class Story:
     def _header(self, idx: int) -> None:
         title, why = CHAPTERS[idx]
         self.c.print(Rule(Text(f" {idx + 1}/{len(CHAPTERS)}  {title} ", style=f"bold {ACCENT}"), style=ACCENT))
-        self.c.print(Text.assemble(("  Why it matters for a bank: ", "bold gold1"), (why, "italic")))
+        self.c.print(Text.assemble(("  Why it matters for a bank: ", f"bold {C2['hi']}"), (why, "italic")))
         self.c.print()
 
     def end_chapter(self, idx: int) -> None:
@@ -170,7 +177,7 @@ class Story:
                  "and an approval gate decide; regulated tables always need a named human. "
                  "Every step is recorded, and every change can be undone.", justify="center"),
             Text(""),
-            Text("offline · synthetic data · 8 short chapters", style="grey62", justify="center"),
+            Text("offline · generated data · 8 short chapters", style="grey62", justify="center"),
         )
         self.c.print(Align.center(Panel(body, box=box.DOUBLE, border_style=ACCENT, padding=(1, 3), width=min(90, self.c.width))))
         self.wait("Enter to begin")
@@ -180,9 +187,9 @@ class Story:
         m = self.g.init(rows=5000, seed=42, force=True)
         self.before = profile(read(self.g.catalog.load_table(TRANSACTIONS)))
         self.header()
-        self.c.print(f"  Built a local Iceberg lakehouse: [bold]bank.transactions[/] with [bold]{m['rows_total']:,}[/] synthetic rows "
+        self.c.print(f"  Built a local Iceberg lakehouse: [bold]bank.transactions[/] with [bold]{m['rows_total']:,}[/] generated rows "
                      f"(snapshot {short(m['snapshot_id'], 10)}).\n")
-        t = Table(box=box.ROUNDED, header_style=f"bold {ACCENT}", expand=False)
+        t = Table(box=box.SQUARE, header_style=f"bold {ACCENT}", expand=False)
         t.add_column("Data-quality issue")
         t.add_column("Planted", justify="right")
         t.add_column("Profiler finds", justify="right")
@@ -193,7 +200,7 @@ class Story:
                 ("Missing merchant category", "null_merchant_category", "null_merchant_category", "weak fraud signals"),
                 ("Negative purchase amounts", "negative_purchase_amount", "negative_purchase_amount", "sign errors")]
         for label, seeded, found, why in rows:
-            t.add_row(label, str(m.get(seeded, "-")), Text(str(self.before.get(found, "-")), style="bold gold1"), why)
+            t.add_row(label, str(m.get(seeded, "-")), Text(str(self.before.get(found, "-")), style=f"bold {C2['data']}"), why)
         self.c.print(t)
         self.c.print("  [grey62]The profiler counts a few more than were planted: the generator's own data has some.[/]")
         self.end_chapter(0)
@@ -209,13 +216,13 @@ class Story:
         p.add_column(style="grey62", no_wrap=True)
         p.add_column()
         p.add_row("plan id", Text(plan.plan_id, style="bold"))
-        p.add_row("operation", Text(plan.operation, style="bold magenta"))
+        p.add_row("operation", Text(plan.operation, style=f"bold {C2['ai']}"))
         p.add_row("target", plan.target_table)
         p.add_row("risk tier", f"{plan.risk_tier} (declared by the agent; policy re-checks it)")
         p.add_row("rationale", plan.rationale)
         sql = " ".join(plan.sql.split())
-        p.add_row("sql", Text(sql if len(sql) < 150 else sql[:147] + "...", style="green"))
-        self.c.print(Panel(p, title="[bold]Proposed plan (JSON, abridged)[/]", border_style="magenta", box=box.ROUNDED))
+        p.add_row("sql", Text(sql if len(sql) < 150 else sql[:147] + "...", style=C2["ai"]))
+        self.c.print(Panel(p, title="[bold]Proposed plan (JSON, abridged)[/]", border_style=C2["ai"], box=box.SQUARE))
         q = Table.grid(padding=(0, 2))
         q.add_column(style="grey62", no_wrap=True)
         q.add_column()
@@ -223,13 +230,13 @@ class Story:
         q.add_row("prompt sha256", str(prov.get("user_prompt_sha256", ""))[:16] + "…")
         q.add_row("input snapshot", str(prov["inputs"][0]["snapshot_id"]))
         q.add_row("policy / code", f"{prov['policy_version']} / {prov['code_version']}")
-        self.c.print(Panel(q, title="[bold]Provenance recorded before anything runs (NIST AI 600-1 style)[/]", border_style="grey50", box=box.ROUNDED))
+        self.c.print(Panel(q, title="[bold]Provenance recorded before anything runs (NIST AI 600-1 style)[/]", border_style="grey50", box=box.SQUARE))
         self.c.print("  [grey62]Offline rule-based planner. Set GIA_LLM_API_KEY to use a real LLM; its output takes the same path.[/]")
         self.end_chapter(1)
 
     def ch3_guardrails(self) -> None:
         self.title_card(2)
-        t = Table(box=box.ROUNDED, header_style=f"bold {ACCENT}", show_lines=True)
+        t = Table(box=box.SQUARE, header_style=f"bold {ACCENT}", show_lines=True)
         t.add_column("Request to the agent", ratio=4)
         t.add_column("Agent proposed", ratio=4)
         t.add_column("Result", no_wrap=True)
@@ -257,7 +264,7 @@ class Story:
         self.safe += self.run("remove duplicate transactions")
         self.fix = self.safe[0][1]
         self.dedup = self.safe[3][1]
-        t = Table(box=box.ROUNDED, header_style=f"bold {ACCENT}", show_lines=True)
+        t = Table(box=box.SQUARE, header_style=f"bold {ACCENT}", show_lines=True)
         t.add_column("Plan", no_wrap=True)
         t.add_column("Rehearsed on", no_wrap=True)
         t.add_column("Rows before → after", justify="right")
@@ -279,7 +286,7 @@ class Story:
                 headline = head["detail"] if head else "-"
             t.add_row(f"{o.operation}\n[grey62]{o.plan_id}[/]", where, rows,
                       chip(f"{npass}/{len(checks)} PASS", "pass" if ev.get("passed") else "fail"),
-                      Text(headline, style="green" if head and head["passed"] else "red"))
+                      Text(headline, style=C2["text"]))
         self.header()
         self.c.print(t)
         self.c.print("  Write-Audit-Publish: nothing reaches main until its evals pass and the approval gate says yes; each published change is tagged approved-<plan_id>.")
@@ -290,14 +297,14 @@ class Story:
         self.fut_refused = self.run("delete future-dated rows")[0]
         self.fut_pair = self.run("delete future-dated rows", approver=ELEVATED, role="elevated")[0]
         self.fut = self.fut_pair[1]
-        t = Table(box=box.ROUNDED, header_style=f"bold {ACCENT}")
+        t = Table(box=box.SQUARE, header_style=f"bold {ACCENT}")
         t.add_column("Change → target", no_wrap=True)
         t.add_column("Tier", no_wrap=True)
         t.add_column("Regulated", justify="center", no_wrap=True, min_width=9)
         t.add_column("Needs", no_wrap=True)
         t.add_column("Approver", no_wrap=True)
         t.add_column("Decision", no_wrap=True, min_width=10)
-        tier_style = {"LOW": "green", "MEDIUM": "gold1", "HIGH": "red"}
+        tier_style = {"LOW": C2["text"], "MEDIUM": C2["text"], "HIGH": C2["text"]}   # risk tier is not a status
         for plan, o in self.safe + [self.fut_refused, self.fut_pair]:
             a = (self.recs(o.plan_id, "APPROVAL_RECORDED") or [{}])[-1]
             rule = "auto OK" if a.get("channel") == "auto-low-risk" else a.get("required_role", "-")
@@ -306,7 +313,7 @@ class Story:
             if o.status == "REJECTED":
                 approver = Text.assemble(approver, (f"\n({a.get('approver_role')} role)", "grey62"))
             t.add_row(f"{o.operation}\n[grey62]→ {o.target}[/]", Text(o.risk_tier, style=f"bold {tier_style.get(o.risk_tier, '')}"),
-                      chip("YES", "warn") if a.get("regulated_target") else chip("no", "muted"), rule, approver, decision)
+                      chip("YES", "person") if a.get("regulated_target") else chip("no", "muted"), rule, approver, decision)
         self.header()
         self.c.print(t)
         self.c.print("  [bold]ADD_COLUMN[/] was LOW risk and auto-approval was on, but it writes to a regulated table, so a person still signed.")
@@ -323,7 +330,7 @@ class Story:
         first = self.run(None, pairs=pairs)
         n_ready, n_held = len(routed["ready"]), len(routed["held"])
         key = json.loads((docs / "_answer_key.json").read_text())
-        t = Table(box=box.ROUNDED, header_style=f"bold {ACCENT}")
+        t = Table(box=box.SQUARE, header_style=f"bold {ACCENT}")
         t.add_column("Document")
         t.add_column("Field")
         t.add_column("Extracted text")
@@ -335,10 +342,10 @@ class Story:
             g.audit.append("REVIEW_RESOLVED", None, REVIEWER, g.queue.state()[item["item_id"]], None)
             conf = item["confidence"]
             filled = round(conf * 10)
-            bar = Text.assemble(("━" * filled, "red" if conf < 0.5 else "gold1"), ("─" * (10 - filled), "grey35"),
-                                (f" {conf:.2f}", "red" if conf < 0.5 else "gold1"))
-            t.add_row(item["doc"].replace(".txt", ""), item["field"], Text(repr(item["raw"]), style="red"),
-                      bar, Text(str(val), style="green"))
+            bar = Text.assemble(("━" * filled, C2["ai"]), ("─" * (10 - filled), "grey35"),
+                                (f" {conf:.2f}", C2["ai"]))
+            t.add_row(item["doc"].replace(".txt", ""), item["field"], Text(repr(item["raw"]), style=C2["data"]),
+                      bar, Text(str(val), style=C2["person"]))
         routed2, pairs2 = g.docai_ingest(docs)
         second = self.run(None, pairs=pairs2)
         loans = read(g.catalog.load_table(LOANS))
@@ -383,7 +390,7 @@ class Story:
             pid = summ.get("gia.plan_id")
             snap.add_row(Text(short(s.snapshot_id, 7) + (" *" if s.snapshot_id == cur else ""), style="bold" if s.snapshot_id == cur else ""),
                          ops.get(pid, "seed data") if pid else "seed data",
-                         Text(f"approved-{pid}" if pid else "-", style="green" if pid else "grey50"))
+                         Text(f"approved-{pid}" if pid else "-", style=C2["person"] if pid else "grey50"))
         tr = Tree(Text(f"trace {self.fix.trace_id[:12]}… ({self.fix.operation})", style="bold"))
         fspans = g.tracer.read(self.fix.trace_id)
         kids: dict = {}
@@ -407,10 +414,10 @@ class Story:
             Text(f"each record hashes the one before it (head {msg.split('head=')[-1]})", style="grey62"),
             Text(f"mirrored to Iceberg table governance.agent_audit", style="grey62"),
         )
-        left = Group(Panel(snap, title="[bold]Iceberg snapshots: bank.transactions[/]", border_style="grey50", box=box.ROUNDED),
-                     Panel(audit, title="[bold]Hash-chained audit log[/]", border_style="green3", box=box.ROUNDED))
-        right = Group(Panel(tr, title=f"[bold]Trace spans ({len(spans)} in {len({s['trace_id'] for s in spans})} traces)[/]", border_style="grey50", box=box.ROUNDED),
-                      Panel(pv, title="[bold]Provenance: currency fix[/]", border_style="grey50", box=box.ROUNDED))
+        left = Group(Panel(snap, title="[bold]Iceberg snapshots: bank.transactions[/]", border_style="grey50", box=box.SQUARE),
+                     Panel(audit, title="[bold]Hash-chained audit log[/]", border_style=C2["platform"], box=box.SQUARE))
+        right = Group(Panel(tr, title=f"[bold]Trace spans ({len(spans)} in {len({s['trace_id'] for s in spans})} traces)[/]", border_style="grey50", box=box.SQUARE),
+                      Panel(pv, title="[bold]Provenance: currency fix[/]", border_style="grey50", box=box.SQUARE))
         grid = Table.grid(expand=True, padding=(0, 1))
         grid.add_column(ratio=6)
         grid.add_column(ratio=4)
@@ -424,7 +431,7 @@ class Story:
         self.title_card(7)
         g = self.g
         mid = profile(read(g.catalog.load_table(TRANSACTIONS)))
-        t = Table(box=box.ROUNDED, header_style=f"bold {ACCENT}", show_lines=True)
+        t = Table(box=box.SQUARE, header_style=f"bold {ACCENT}", show_lines=True)
         t.add_column("Step", justify="right")
         t.add_column("Undo request")
         t.add_column("Result", no_wrap=True)
@@ -439,15 +446,15 @@ class Story:
                           f"back to snapshot {short(r['restored_snapshot_id'], 10)}")
             except RollbackRefused:
                 self.rollbacks["refused"] += 1
-                t.add_row(str(i), f"{label}\n[grey62]{o.plan_id}[/]", chip("REFUSED", "warn"),
+                t.add_row(str(i), f"{label}\n[grey62]{o.plan_id}[/]", chip("REFUSED", "fail"),
                           "a later change sits on top; undoing would silently discard it (use --force after review)")
         after = profile(read(g.catalog.load_table(TRANSACTIONS)))
-        p = Table(box=box.ROUNDED, header_style=f"bold {ACCENT}", title="bank.transactions data-quality profile", title_style="bold")
+        p = Table(box=box.SQUARE, header_style=f"bold {ACCENT}", title="bank.transactions data-quality profile", title_style="bold")
         p.add_column("Metric")
         for col in ("Start", "After changes", "After rollback"):
             p.add_column(col, justify="right")
         for metric, label in (("noncanonical_currency", "non-canonical currency"), ("duplicate_txn_id", "duplicate txn ids"), ("future_dated", "future-dated rows")):
-            p.add_row(label, str(self.before[metric]), Text(str(mid[metric]), style="green"), str(after[metric]))
+            p.add_row(label, str(self.before[metric]), Text(str(mid[metric]), style=C2["text"]), str(after[metric]))
         self.header()
         self.c.print(t)
         self.c.print(p)
@@ -470,9 +477,9 @@ class Story:
         t.add_row("Plans proposed (agent + Document AI)", str(ev["PROPOSED"]), chip("RECORDED", "info"))
         t.add_row("Executed after evals and approval", str(ev["EXECUTED"]), chip("EXECUTED", "pass"))
         t.add_row("Blocked by guardrails", str(ev["BLOCKED"]), chip("BLOCKED", "fail"))
-        t.add_row("Refused at the approval gate (wrong role)", str(sum(1 for r in recs if r["event_type"] == "APPROVAL_RECORDED" and r["payload"]["decision"] == "REJECTED")), chip("REFUSED", "warn"))
+        t.add_row("Refused at the approval gate (wrong role)", str(sum(1 for r in recs if r["event_type"] == "APPROVAL_RECORDED" and r["payload"]["decision"] == "REJECTED")), chip("REFUSED", "fail"))
         t.add_row("Low-confidence fields sent to a reviewer", str(ev["ROUTED_TO_REVIEW"]), chip(f"{ev['REVIEW_RESOLVED']} RESOLVED", "pass"))
-        t.add_row("Rollbacks (unsafe one refused first)", f"{ev['ROLLED_BACK']}", chip(f"{ev['ROLLBACK_REFUSED']} REFUSED", "warn"))
+        t.add_row("Rollbacks (unsafe one refused first)", f"{ev['ROLLED_BACK']}", chip(f"{ev['ROLLBACK_REFUSED']} REFUSED", "fail"))
         t.add_row("Audit records, hash chain verified", str(len(recs)), chip("INTACT" if ok else "BROKEN", "pass" if ok else "fail"))
         t.add_row("Trace spans / provenance records", f"{len(spans)} / {prov_n}", chip("SAVED", "info"))
         self.c.print()
@@ -481,7 +488,7 @@ class Story:
         self.c.print(Align.center(t))
         self.c.print(Align.center(Text.assemble(chip("REVIEWABLE", "pass"), "   ", chip("REVERSIBLE", "pass"), "   ", chip("EVIDENCED", "pass"))))
         self.c.print()
-        self.c.print(Align.center(Text(f"evidence written to {where(self.settings.home)}  ·  synthetic data  ·  `gia demo --pause` to present", style="grey62")))
+        self.c.print(Align.center(Text(f"evidence written to {where(self.settings.home)}  ·  generated data  ·  `gia demo --pause` to present", style="grey62")))
         self.ok = ok
 
     def main(self) -> None:

@@ -40,12 +40,12 @@ The working rule: an agent can act on bank data only when every action is **revi
 **reversible**.
 
 Everything runs on a laptop: PyIceberg with a SQLite catalog on the local filesystem and DuckDB
-for sandboxed transforms. You need no cloud keys and no Docker. **All data is synthetic** (see
+for sandboxed transforms. You need no cloud keys and no Docker. **All data is generated and made up** (see
 [DATA_NOTICE.md](DATA_NOTICE.md)).
 
 ## What you're seeing in the demo
 
-1. **Data and seeded issues.** A 5,000-row synthetic `bank.transactions` table with planted
+1. **Data and seeded issues.** A 5,000-row generated `bank.transactions` table with planted
    defects (bad currency codes, replayed duplicates, future-dated rows), and what the profiler finds.
 2. **The agent proposes.** The agent turns a goal into a JSON plan (operation, SQL, rationale,
    risk tier). Its provenance (model, prompt hash, input snapshot, policy and code version) is
@@ -158,7 +158,7 @@ demo on Python 3.10, 3.11, 3.12 and 3.13 (Linux). Developed with PyIceberg 0.12.
 Individual commands:
 
 ```bash
-gia init                                   # catalog + synthetic bank.transactions / bank.loan_applications
+gia init                                   # catalog + generated bank.transactions / bank.loan_applications
 gia profile                                # data-quality metrics
 gia propose --goal "remove duplicate transactions" --planner mock
 gia run --goal "standardize currency codes" --approver your.name           # prompts y/N
@@ -196,10 +196,10 @@ shortened line is marked with ….
 Full output: [docs/sample-run/gia-demo.txt](docs/sample-run/gia-demo.txt). Snapshot, plan and trace
 ids differ per run. Audit timestamps are stored in UTC.
 
-**Synthetic data with seeded defects.** The profiler finds a few more than were planted, because
+**Generated data with seeded defects.** The profiler finds a few more than were planted, because
 the generator's own random data has some.
 ```
-=== 1. Init local Iceberg lakehouse (SQLite catalog + local files, synthetic data) 
+=== 1. Init local Iceberg lakehouse (SQLite catalog + local files, generated data) 
   seeded bank.transactions: 5000 rows, snapshot 8746992293146341987
   seeded defects: {'noncanonical_currency': 197, 'null_merchant_category': 147, 'negative_purchase_amount': 49, 'future_dated': 24, 'duplicate_rows': 75}
   profile: {'row_count': 5000, 'null_txn_id': 0, 'duplicate_txn_id': 75, 'noncanonical_currency': 202, 'null_merchant_category': 150, 'negative_purchase_amount': 50, 'future_dated': 24}
@@ -259,7 +259,7 @@ reviewer resolves the low-confidence field.
   [EXECUTED] p-4d8c4365de APPEND_RECORDS       tier=MEDIUM -> bank.loan_applications
              approved by reviewer.alex via demo-simulated
              snapshot 3651590677270913634 -> 752532673956218148   trace=d78c9ef507b8ab6bd3872a8a2b49848a
-  reviewer resolves the queue (simulated reviewer reads the synthetic answer key):
+  reviewer resolves the queue (simulated reviewer reads the generated answer key):
     3dc5a1c2:annual_income     annual_income     raw='$153,OOO'   conf=0.72 -> 153000.0
     f7f4e913:loan_amount       loan_amount       raw='$1?,500'    conf=0.20 -> 13500.0
     0365c1b8:application_date  application_date  raw='09/23/26'   conf=0.80 -> '2026-09-23'
@@ -490,7 +490,7 @@ src/governed_agent/
   evals.py                  schema compat, DQ assertions, diff, PII checks
   approval.py               human approval gate
   audit.py tracing.py       hash-chained audit log; OTel-style spans
-  docai.py                  synthetic documents, extraction, confidence routing, reviewer queue
+  docai.py                  generated documents, extraction, confidence routing, reviewer queue
   pipeline.py               the governor that wires it all together
   default_policy.json       the policy (owned by risk, not by the agent)
 tests/                      43 pytest tests
@@ -525,9 +525,9 @@ approval prompt, and `gia demo` in story, `--pause` and `--fast` modes.
 See [docs/architecture.md](docs/architecture.md#5-limitations). In short: this is a single-process
 demo. The audit chain is tamper-*evident*, not tamper-*proof*. Approver identity is a CLI string,
 not SSO. The PII check is name-based plus a regex value scan, which is not a classifier. The
-Document AI extractor is regex-based on synthetic text, not OCR. The optional REST/Polaris catalog
+Document AI extractor is regex-based on generated text, not OCR. The optional REST/Polaris catalog
 hook (`GIA_CATALOG_NAME`) is untested.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Synthetic data only; see [DATA_NOTICE.md](DATA_NOTICE.md).
+MIT, see [LICENSE](LICENSE). Generated, made-up data only; see [DATA_NOTICE.md](DATA_NOTICE.md).

@@ -13,13 +13,13 @@ Output docs/demo.mp4
 Require gia
 Set Shell "bash"
 Set FontSize 22
-Set FontFamily "DejaVu Sans Mono"
+Set FontFamily "IBM Plex Mono, DejaVu Sans Mono"
 Set Width 1520
 Set Height 900
 Set Padding 26
-Set Theme "Catppuccin Mocha"
-Set WindowBar Colorful
-Set BorderRadius 10
+# Blueprint v2.0 palette C2 (house-theme/animations/terminal/vhs-blueprint-c2.json): navy, no window bar, square corners
+Set Theme {"name": "Blueprint C2", "background": "#0F172A", "foreground": "#E2E8F0", "cursor": "#5EEAD4", "selection": "#0F766E", "black": "#0B1222", "red": "#E07A6B", "green": "#86EFAC", "yellow": "#FCD34D", "blue": "#A5B4FC", "magenta": "#D946EF", "cyan": "#5EEAD4", "white": "#E2E8F0", "brightBlack": "#94A3B8", "brightRed": "#E07A6B", "brightGreen": "#86EFAC", "brightYellow": "#FCD34D", "brightBlue": "#BAE6FD", "brightMagenta": "#D946EF", "brightCyan": "#5EEAD4", "brightWhite": "#F8FAFC"}
+Set BorderRadius 0
 Set Framerate 15
 Set TypingSpeed 60ms
 Set CursorBlink false

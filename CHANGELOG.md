@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format follows
 ## [0.1.0] - 2026-10-18
 
 First public release. A working, offline demo of an LLM agent that proposes changes to Apache
-Iceberg tables, where every change is reviewable and reversible. All data is synthetic.
+Iceberg tables, where every change is reviewable and reversible. All data is generated and made up.
 
 ### Added
 - **Structured plans** with validation of untrusted planner output (`plan.py`).

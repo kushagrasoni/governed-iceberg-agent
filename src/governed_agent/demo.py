@@ -13,7 +13,7 @@ from .lakehouse import TRANSACTIONS, read
 from .pipeline import LOANS, Governor
 from .profiler import profile
 
-REVIEWER = "reviewer.alex"      # synthetic names
+REVIEWER = "reviewer.alex"      # made-up names
 ELEVATED = "mrm.officer.priya"
 
 
@@ -42,7 +42,7 @@ def main(args) -> None:
             outs.append(o)
         return outs
 
-    h("1. Init local Iceberg lakehouse (SQLite catalog + local files, synthetic data)")
+    h("1. Init local Iceberg lakehouse (SQLite catalog + local files, generated data)")
     m = g.init(rows=5000, seed=42, force=True)
     print(f"  seeded bank.transactions: {m['rows_total']} rows, snapshot {m['snapshot_id']}")
     print(f"  seeded defects: { {k: v for k, v in m.items() if k not in ('rows_total', 'rows_clean_base', 'snapshot_id')} }")
@@ -76,7 +76,7 @@ def main(args) -> None:
         print(f"    held {hld['doc']}: {hld['open_fields']}")
     for plan, prov in pairs:
         _print_outcome(g.run_plan(plan, prov, approver=REVIEWER, simulated_decision=sim))
-    print("  reviewer resolves the queue (simulated reviewer reads the synthetic answer key):")
+    print("  reviewer resolves the queue (simulated reviewer reads the generated answer key):")
     key = json.loads((docs / "_answer_key.json").read_text())
     for item in g.queue.open_items():
         val = key[item["doc"]][item["field"]]
